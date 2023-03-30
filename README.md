@@ -1,4 +1,5 @@
 # Kube DOOM
+
 ## Kill Kubernetes pods using Id's Doom!
 
 The next level of chaos engineering is here! Kill pods inside your Kubernetes
@@ -46,9 +47,11 @@ $ podman run -it -p5901:5900/tcp \
 ### Attaching a VNC Client
 
 Now start a VNC viewer and connect to `localhost:5901`. The password is `idbehold`:
+
 ```console
 $ vncviewer viewer localhost:5901
 ```
+
 You should now see DOOM! Now if you want to get the job done quickly enter the
 cheat `idspispopd` and walk through the wall on your right. You should be
 greeted by your pods as little pink monsters. Press `CTRL` to fire. If the
@@ -107,6 +110,7 @@ clusterrolebinding.rbac.authorization.k8s.io/kubedoom created
 ```
 
 To connect run:
+
 ```console
 $ vncviewer viewer localhost:5900
 ```
