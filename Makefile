@@ -9,7 +9,7 @@ cluster:
 	colima start -p kubedoom --cpu 8 --memory 16 --kubernetes
 
 registry:
-	docker run -d -p 5000:5000 --restart=always --name registry registry:2
+	docker run -d -p 5000:5000 --restart=always --name registry registry
 
 build:
 	docker build -t $(TAG) .

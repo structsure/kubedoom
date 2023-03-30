@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -9,7 +11,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"golang.org/x/exp/slices"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -75,7 +80,7 @@ func RemoveIfPresent(slice []string, check string) []string {
 	return slice
 }
 func getEntitiesK8sClient() []string {
-  	// creates the in-cluster config
+	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())

@@ -1,17 +1,14 @@
 FROM golang:1.20-alpine AS build-kubedoom
 WORKDIR /go/src/kubedoom
-ADD go.mod .
+ADD go.mod go.sum ./
 ADD kubedoom.go .
-RUN go get golang.org/x/exp/slices
-RUN go install golang.org/x/exp/slices
-RUN go get k8s.io/client-go@latest
-RUN go install k8s.io/client-go@latest
+RUN go build && go install
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubedoom .
+
 
 FROM ubuntu:kinetic AS build-essentials
 ARG TARGETARCH=amd64
-ARG KUBECTL_VERSION=1.25.4
-ARG KUBECTL_VERSION=1.23.2
+ARG KUBECTL_VERSION=1.26.1
 RUN apt-get update && apt-get install -y \
   -o APT::Install-Suggests=0 \
   --no-install-recommends \
@@ -43,7 +40,7 @@ RUN mkdir -p \
   /build/usr/local/games
 COPY --from=build-essentials /doom1.wad /build/root
 COPY --from=build-essentials /usr/bin/kubectl /build/usr/bin
-COPY --from=build-kubedoom /go/src/kubedoom/kubedoom /build/usr/bin
+COPY --from=build-kubedoom /go/bin/kubedoom /build/usr/bin
 COPY --from=build-doom /usr/local/games/psdoom /build/usr/local/games
 
 FROM ubuntu:kinetic
