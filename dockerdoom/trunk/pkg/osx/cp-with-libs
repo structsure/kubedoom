@@ -10,12 +10,12 @@ dest_dir=$2
 
 is_dylib() {
 	case "$1" in
-		*.dylib)
-			true
-			;;
-		*)
-			false
-			;;
+	*.dylib)
+		true
+		;;
+	*)
+		false
+		;;
 	esac
 }
 
@@ -24,15 +24,15 @@ is_dylib() {
 
 is_sys_lib() {
 	case "$1" in
-		/System/*)
-			true
-			;;
-		/usr/*)
-			true
-			;;
-		*)
-			false
-			;;
+	/System/*)
+		true
+		;;
+	/usr/*)
+		true
+		;;
+	*)
+		false
+		;;
 	esac
 }
 
@@ -54,7 +54,7 @@ install_with_deps() {
 
 	if [ -e "$dest_file" ]; then
 		return
-	fi	
+	fi
 
 	echo "Installing $bin_name..."
 
@@ -65,7 +65,7 @@ install_with_deps() {
 	# Copy libraries that this file depends on:
 
 	otool -L "$src_file" | tail -n +2 | sed 's/^.//; s/ (.*//' | while read; do
-		
+
 		# Don't copy system libraries
 
 		if is_sys_lib "$REPLY"; then
@@ -84,7 +84,7 @@ install_with_deps() {
 
 		lib_name=$(basename "$REPLY")
 		install_name_tool -change "$REPLY" "@executable_path/$lib_name" \
-		                  "$dest_file"
+			"$dest_file"
 	done
 
 	# If this is a library that we have installed, change its id:
@@ -97,4 +97,3 @@ install_with_deps() {
 # Install the file, and recursively install any libraries:
 
 install_with_deps "$src_bin"
-
