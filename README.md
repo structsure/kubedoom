@@ -1,13 +1,13 @@
 # Kube DOOM
 
-## Kill Kubernetes pods using Id's Doom!
+## Kill Kubernetes pods using Id's Doom
 
 The next level of chaos engineering is here! Kill pods inside your Kubernetes
 cluster by shooting them in Doom!
 
 This is a fork of the excellent
 [gideonred/dockerdoomd](https://github.com/gideonred/dockerdoomd) using a
-slightly modified Doom, forked from https://github.com/gideonred/dockerdoom,
+slightly modified Doom, forked from <https://github.com/gideonred/dockerdoom>,
 which was forked from psdoom.
 
 ![DOOM](assets/doom.jpg)
@@ -21,27 +21,30 @@ In order to run locally you will need to
 
 ### With Docker
 
-Run `ghcr.io/storax/kubedoom:latest` with docker locally:
+Run `ghcr.io/structsure/kubedoom:latest` with docker locally:
 
 ```console
-$ docker run -p5901:5900 \
-  --net=host \
-  -v ~/.kube:/root/.kube \
-  --rm -it --name kubedoom \
-  ghcr.io/storax/kubedoom:latest
+docker run --publish 5901:5900 \
+  --network host \
+  --volume $HOME/.kube:/root/.kube:z \
+  --rm --interactive --tty --name kubedoom \
+  ghcr.io/structsure/kubedoom:latest
+
 ```
 
 Optionally, if you set `-e NAMESPACE={your namespace}` you can limit Kubedoom to deleting pods in a single namespace
 
 ### With Podman
 
-Run `ghcr.io/storax/kubedoom:latest` with podman locally:
+Run `ghcr.io/structsure/kubedoom:latest` with podman locally:
 
 ```console
-$ podman run -it -p5901:5900/tcp \
-  -v ~/.kube:/tmp/.kube --security-opt label=disable \
-  --env "KUBECONFIG=/tmp/.kube/config" --name kubedoom
-  ghcr.io/storax/kubedoom:latest
+podman run --interactive --tty --publish 5901:5900/tcp \
+  --volume $HOME/.kube:/tmp/.kube:z \
+  --security-opt label=disable \
+  --env "KUBECONFIG=/tmp/.kube/config" \
+  --name kubedoom \
+  ghcr.io/structsure/kubedoom:latest
 ```
 
 ### Attaching a VNC Client
@@ -49,7 +52,7 @@ $ podman run -it -p5901:5900/tcp \
 Now start a VNC viewer and connect to `localhost:5901`. The password is `idbehold`:
 
 ```console
-$ vncviewer viewer localhost:5901
+vncviewer viewer localhost:5901
 ```
 
 You should now see DOOM! Now if you want to get the job done quickly enter the
@@ -61,16 +64,16 @@ Pause the game with `ESC`.
 ### Killing namespaces
 
 Kubedoom now also supports killing namespaces [in case you have too many of
-them](https://github.com/storax/kubedoom/issues/5). Simply set the `-mode` flag
+them](https://github.com/structsure/kubedoom/issues/5). Simply set the `-mode` flag
 to `namespaces`:
 
 ```console
-$ docker run -p5901:5900 \
-  --net=host \
-  -v ~/.kube:/root/.kube \
-  --rm -it --name kubedoom \
-  ghcr.io/storax/kubedoom:latest \
-  -mode namespaces
+docker run --publish 5901:5900 \
+  --network host \
+  --volume $HOME/.kube:/root/.kube:z \
+  --rm --interactive --tty --name kubedoom \
+  ghcr.io/structsure/kubedoom:latest \
+  --mode namespaces
 ```
 
 ### Running Kubedoom inside Kubernetes
@@ -80,7 +83,12 @@ See the example in the `/manifest` directory. You can quickly test it using
 example config from this repository:
 
 ```console
-$ kind create cluster --config kind-config.yaml
+kind create cluster --config kind-config.yaml
+```
+
+output:
+
+```console
 Creating cluster "kind" ...
  ✓ Ensuring node image (kindest/node:v1.23.0) 🖼
  ✓ Preparing nodes 📦 📦
@@ -102,7 +110,12 @@ the worker node. Then run kubedoom inside the cluster by applying the manifest
 provided in this repository:
 
 ```console
-$ kubectl apply -k manifest/
+kubectl apply --kustomize manifest/
+```
+
+output:
+
+```bash
 namespace/kubedoom created
 deployment.apps/kubedoom created
 serviceaccount/kubedoom created
@@ -112,7 +125,7 @@ clusterrolebinding.rbac.authorization.k8s.io/kubedoom created
 To connect run:
 
 ```console
-$ vncviewer viewer localhost:5900
+ssh -L 5900:localhost:5900 user@server & sleep 2; vncviewer -FullScreen localhost:5900; kill %1
 ```
 
 Kubedoom requires a service account with permissions to list all pods and delete
@@ -125,7 +138,7 @@ specify your systems architecture as the `TARGETARCH` build argument. For
 example `amd64` or `arm64`.
 
 ```console
-$ docker build --build-arg=TARGETARCH=amd64 -t kubedoom .
+docker build --build-arg TARGETARCH=amd64 -t kubedoom .
 ```
 
 To change the default VNC password, use `--build-arg=VNCPASSWORD=differentpw`.
