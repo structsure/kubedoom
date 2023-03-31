@@ -69,30 +69,7 @@ jobs:
     needs: build-push-image
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Generate changelog
-        uses: heinrichreimer/action-github-changelog-generator@v2.3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: CHANGELOG.md
-
-      - name: Configure Git and create a commit
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "Update CHANGELOG.md [skip ci]"
-
-      - name: Commit and push changelog
-        uses: ad-m/github-push-action@v0.6.0
-        with:
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          branch: ${{ github.ref }}
-          force: false
-
-      - name: Create Release and Upload Changelog
+      - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v0.1.15
         with:
@@ -104,6 +81,5 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.create_tag.outputs.new_version }}
           draft: false
           prerelease: false
-          files: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
