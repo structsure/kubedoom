@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
+// hash generates a hash from a given input string.
 func hash(input string) int32 {
-	var hash int32
-	hash = 5381
+	var hash int32 = 5381
 	for _, char := range input {
 		hash = ((hash << 5) + hash + int32(char))
 	}
@@ -23,36 +23,34 @@ func hash(input string) int32 {
 	return hash
 }
 
-func runCmd(cmdstring string) {
-	parts := strings.Split(cmdstring, " ")
-	cmd := exec.Command(parts[0], parts[1:]...)
+// runCommand executes the given command and logs if there's an error.
+func runCommand(cmd *exec.Cmd) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		log.Fatalf("The following command failed: \"%v\"\n", cmdstring)
+		log.Fatalf("The following command failed: \"%v\"\n", cmd)
 	}
 }
 
-func outputCmd(argv []string) string {
-	cmd := exec.Command(argv[0], argv[1:]...)
+// outputCommand executes the given command and returns its output as a string.
+func outputCommand(cmd *exec.Cmd) string {
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("The following command failed: \"%v\"\n", argv)
+		log.Fatalf("The following command failed: \"%v\"\n", cmd)
 	}
 	return string(output)
 }
 
-func startCmd(cmdstring string) {
-	parts := strings.Split(cmdstring, " ")
-	cmd := exec.Command(parts[0], parts[1:]...)
+// startCommand starts the given command without waiting for it to complete.
+func startCommand(cmd *exec.Cmd) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("The following command failed: \"%v\"\n", cmdstring)
+		log.Fatalf("The following command failed: \"%v\"\n", cmd)
 	}
 }
 
@@ -61,8 +59,7 @@ type Mode interface {
 	deleteEntity(string)
 }
 
-type podmode struct {
-}
+type podmode struct{}
 
 func (m podmode) getEntities() []string {
 	var args []string
@@ -71,7 +68,7 @@ func (m podmode) getEntities() []string {
 	} else {
 		args = []string{"kubectl", "get", "pods", "-A", "-o", "go-template", "--template={{range .items}}{{.metadata.namespace}}/{{.metadata.name}} {{end}}"}
 	}
-	output := outputCmd(args)
+	output := outputCommand(exec.Command(args[0], args[1:]...))
 	outputstr := strings.TrimSpace(output)
 	pods := strings.Split(outputstr, " ")
 	return pods
@@ -84,12 +81,11 @@ func (m podmode) deleteEntity(entity string) {
 	go cmd.Run()
 }
 
-type nsmode struct {
-}
+type nsmode struct{}
 
 func (m nsmode) getEntities() []string {
 	args := []string{"kubectl", "get", "namespaces", "-o", "go-template", "--template={{range .items}}{{.metadata.name}} {{end}}"}
-	output := outputCmd(args)
+	output := outputCommand(exec.Command(args[0], args[1:]...))
 	outputstr := strings.TrimSpace(output)
 	namespaces := strings.Split(outputstr, " ")
 	return namespaces
@@ -122,7 +118,7 @@ func socketLoop(listener net.Listener, mode Mode) {
 					padding := strings.Repeat("\n", 255-len(entity))
 					_, err = conn.Write([]byte(entity + padding))
 					if err != nil {
-						log.Fatal("Could not write to socker file")
+						log.Fatal("Could not write to socket file")
 					}
 				}
 				conn.Close()
@@ -168,12 +164,12 @@ func main() {
 	}
 
 	log.Print("Create virtual display")
-	startCmd("/usr/bin/Xvfb :99 -ac -screen 0 640x480x24")
+	runCommand(exec.Command("/usr/bin/Xvfb", ":99", "-ac", "-screen", "0", "640x480x24"))
 	time.Sleep(time.Duration(2) * time.Second)
-	startCmd("x11vnc -geometry 640x480 -forever -usepw -display :99")
+	startCommand(exec.Command("x11vnc", "-geometry", "640x480", "-forever", "-usepw", "-display", ":99"))
 	log.Print("You can now connect to it with a VNC viewer at port 5900")
 
 	log.Print("Trying to start DOOM ...")
-	startCmd("/usr/bin/env DISPLAY=:99 /usr/local/games/psdoom -warp -E1M1 -skill 1 -nomouse")
+	startCommand(exec.Command("/usr/bin/env", "DISPLAY=:99", "/usr/local/games/psdoom", "-warp", "-E1M1", "-skill", "1", "-nomouse"))
 	socketLoop(listener, mode)
 }
