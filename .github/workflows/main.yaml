@@ -79,14 +79,16 @@ jobs:
           base: CHANGELOG.md
 
       - name: Commit and push changelog
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "Update CHANGELOG.md [skip ci]"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        uses: peaceiris/actions-gh-pages@v3.9.3
+        with:
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          publish_dir: .
+          allow_empty_commit: true
+          keep_files: true
+          user_name: "GitHub Actions"
+          user_email: "github-actions@users.noreply.github.com"
+          commit_message: "Update CHANGELOG.md [skip ci]"
+          force_orphan: false
 
       - name: Create Release and Upload Changelog
         id: create_release
