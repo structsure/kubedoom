@@ -26,6 +26,7 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 COPY /dockerdoom /dockerdoom
 WORKDIR /dockerdoom/trunk
+RUN ls -la
 RUN ./configure && make && make install
 
 FROM ubuntu:22.04 as build-converge
