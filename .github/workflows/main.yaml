@@ -111,6 +111,8 @@ jobs:
           base: CHANGELOG.md
 
       - name: Commit and push changelog
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions@users.noreply.github.com"
