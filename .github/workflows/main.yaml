@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: metadata
-          path: |
+          path: >-
             tags.txt
             labels.txt
 
