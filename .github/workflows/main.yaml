@@ -84,7 +84,7 @@ jobs:
           name: metadata
       - name: Load metadata from file
         id: load_metadata
-        run: |
+        run: >-
           echo "TAGS=$(cat tags.txt)" >> $GITHUB_ENV
           echo "LABELS=$(cat labels.txt)" >> $GITHUB_ENV
 
