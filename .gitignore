@@ -52,3 +52,5 @@
 
 # Go workspace file
 go.work
+
+.fake
