@@ -114,7 +114,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v0.1.15
         with:
-          tag_name: ${{ steps.version.outputs.tag_name }}
+          tag_name: 1.0.0
           name: Release ${{ steps.version.outputs.release_version }}
           body: |
             ${{ env.IMAGE_NAME }} version ${{ steps.version.outputs.release_version }} is now available.
