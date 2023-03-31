@@ -51,7 +51,7 @@ jobs:
           echo "${{ steps.meta.outputs.tags }}" > tags.txt
           echo "${{ steps.meta.outputs.labels }}" > labels.txt
       - name: Upload metadata
-        uses: actions/upload-artifact@v3.12
+        uses: actions/upload-artifact@v3
         with:
           name: metadata
           path: |
