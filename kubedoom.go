@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -93,7 +93,11 @@ func getEntitiesK8sClient() []string {
 	for {
 		// get pods in all the namespaces by omitting namespace
 		// Or specify namespace to get pods in particular namespace
-		pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+		var listoptions = v1.ListOptions{
+			Limit:    500,
+			Continue: "true",
+		}
+		pods, err := clientset.CoreV1().Pods("").List(context.TODO(), listoptions)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -102,7 +106,7 @@ func getEntitiesK8sClient() []string {
 		// Examples for error handling:
 		// - Use helper functions e.g. errors.IsNotFound()
 		// - And/or cast to StatusError and use its properties like e.g. ErrStatus.Message
-		_, err = clientset.CoreV1().Pods("default").Get(context.TODO(), "example-xxxxx", metav1.GetOptions{})
+		_, err = clientset.CoreV1().Pods("default").Get(context.TODO(), "example-xxxxx", v1.GetOptions{})
 		if errors.IsNotFound(err) {
 			fmt.Printf("Pod example-xxxxx not found in default namespace\n")
 		} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
