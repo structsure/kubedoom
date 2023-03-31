@@ -86,7 +86,7 @@ jobs:
           git commit -m "Update CHANGELOG.md [skip ci]"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Create Release and Upload Changelog
         id: create_release
