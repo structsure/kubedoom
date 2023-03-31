@@ -1,9 +1,9 @@
 
 psdoom-ng is based on Chocolate Doom and psDooM code bases.  psDooM
-was based on xdoom.  Chocolate Doom's engine was chosen for several 
-reasons.  psdoom-ng was ment to be a lightweight process killer 
-comparable to 2D versions of process management.  Chocolate Doom uses 
-SDL which makes it compatible with Windows, MacOS.  We hope to port 
+was based on xdoom.  Chocolate Doom's engine was chosen for several
+reasons.  psdoom-ng was ment to be a lightweight process killer
+comparable to 2D versions of process management.  Chocolate Doom uses
+SDL which makes it compatible with Windows, MacOS.  We hope to port
 psdoom-ng to popular platforms such as MacOS and Windows.
 
 psdoom-ng is a Doom source port which aims to behave as closely
@@ -11,11 +11,11 @@ as possible to the original DOS Doom executables.
 
 psdoom-ng aims to:
 
- * Be lightweight and simple process manager
- * Crossplatform 3D Process Manager
- * Allow system administrators actually kill programs
- * Expose or visualize hidden and zombies processes
- * Expose current users or ttys as avatars.
+* Be lightweight and simple process manager
+* Crossplatform 3D Process Manager
+* Allow system administrators actually kill programs
+* Expose or visualize hidden and zombies processes
+* Expose current users or ttys as avatars.
 
 == Setting up gameplay ==
 
@@ -61,15 +61,15 @@ Here are some examples:
 
 == Other information ==
 
- * More information, including information about how to play various
+* More information, including information about how to play various
    classic TCs, is available on the psdoom-ng website:
 
-     http://www.chocolate-doom.org/
+     <http://www.chocolate-doom.org/>
 
    You are encouraged to sign up and contribute any useful information
    you may have regarding the port!
 
- * psdoom-ng is not perfect.  Although it aims to accurately
+* psdoom-ng is not perfect.  Although it aims to accurately
    emulate Vanilla Doom, some of the behavior of Vanilla Doom can be
    very difficult to reproduce. Because of the nature of the project,
    you may also encounter Vanilla Doom bugs; these are intentionally
@@ -78,21 +78,20 @@ Here are some examples:
    New bug reports can be submitted to the psdoom-ng bug tracker
    on Github.  See:
 
-     https://github.com/orsonteodoro/psdoom-ng
+     <https://github.com/orsonteodoro/psdoom-ng>
 
- * Source code patches are welcome, but please follow the style
+* Source code patches are welcome, but please follow the style
    guidelines - see the file named HACKING included with the source
    distribution.
 
- * psdoom-ng is distributed under the GNU GPL.  See the COPYING
+* psdoom-ng is distributed under the GNU GPL.  See the COPYING
    file for more information.
 
- * Please send any feedback, questions or suggestions to
+* Please send any feedback, questions or suggestions to
    fraggle@gmail.com for questions about the Chocolate doom game engine.  
    Or send messages to orsonteodoro@yahoo.com about psdoom-ng Thanks!
 
- For detailed information about original intent of psDooM see 
+ For detailed information about original intent of psDooM see
  psdoom/README.
 
 # vim: tw=70
-

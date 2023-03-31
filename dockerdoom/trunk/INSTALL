@@ -12,12 +12,12 @@ Before you can play Chocolate Doom, you need to compile a binary that
 you can run.  For compilation, Chocolate Doom requires the following
 to be installed:
 
- * A C compiler (gcc is recommended)
- * make (GNU make is recommended)
- * LibSDL (see http://www.libsdl.org/)
- * SDL_mixer (see http://www.libsdl.org/projects/SDL_mixer/)
- * SDL_net (see http://www.libsdl.org/projects/SDL_net/)
- * Python (optional)
+* A C compiler (gcc is recommended)
+* make (GNU make is recommended)
+* LibSDL (see <http://www.libsdl.org/>)
+* SDL_mixer (see <http://www.libsdl.org/projects/SDL_mixer/>)
+* SDL_net (see <http://www.libsdl.org/projects/SDL_net/>)
+* Python (optional)
 
 Follow the standard instructions for installing an autotools-based
 package:
@@ -52,27 +52,27 @@ following names:
 If you don't have a copy of a commercial version, you can download
 the shareware version (extract the file named doom1.wad):
 
- * http://www.doomworld.com/idgames/index.php?id=7053
+* <http://www.doomworld.com/idgames/index.php?id=7053>
    (idstuff/doom/win95/doom95.zip in your nearest /idgames mirror)
 
 If you have a commercial version, obtaining the IWAD file is usually
 straightforward.  The method depends on how you obtained your copy of
 the game:
 
- * The Doom games are available to buy for download on Steam
-   (http://www.steampowered.com/).  To find the IWAD files on a
+* The Doom games are available to buy for download on Steam
+   (<http://www.steampowered.com/>).  To find the IWAD files on a
    Windows system, look in the Steam directory (usually within
    "Program Files"), under the "steamapps/common" path.
 
- * There have been several CD-based versions of Doom.  Generally, the
+* There have been several CD-based versions of Doom.  Generally, the
    IWAD files can be found on the CD and copied off directly.
 
- * If the IWAD files are not directly available on the CD, or you have
+* If the IWAD files are not directly available on the CD, or you have
    a floppy disk version, installation is more difficult.  The best
    suggestion is to use a DOS emulator (such as DOSbox) to run the
    installer.
 
- * As an alternative to using an emulator, it is possible to extract
+* As an alternative to using an emulator, it is possible to extract
    the files manually.  On the install disk(s), you will find several
    files with numbered extensions (with CD versions there may be a
    single large file with the extension .1, eg. "resource.1").
@@ -92,20 +92,20 @@ Running the game
 Chocolate Doom needs to know where to find your IWAD file. To do this,
 do one of the following:
 
- * Run Chocolate Doom from the Unix console with the '-iwad' command
+* Run Chocolate Doom from the Unix console with the '-iwad' command
    line parameter to specify the IWAD file to use, eg.
 
        chocolate-doom -iwad /root/doom2.wad
 
- * Put the file into one of the following directories:
+* Put the file into one of the following directories:
 
      /usr/share/games/doom
      /usr/local/share/games/doom
 
- * Set the environment variable DOOMWADDIR to specify the path to a
+* Set the environment variable DOOMWADDIR to specify the path to a
    directory containing your IWAD files.
 
- * If you have multiple IWADs in different directories, set the
+* If you have multiple IWADs in different directories, set the
    environment variable DOOMWADPATH to be a colon-separated list of
    directories to search (similar to the Unix PATH environment
    variable).
@@ -118,10 +118,10 @@ was distributed with boxes of Chex cereal in 1997.  It is possible to
 play Chex Quest using Chocolate Doom.  To do this, the following files
 are needed:
 
- * The IWAD file 'chex.wad', from the Chex Quest CD.
+* The IWAD file 'chex.wad', from the Chex Quest CD.
 
- * The dehacked patch 'chex.deh', which can be found here:
-   http://www.doomworld.com/idgames/?id=15420
+* The dehacked patch 'chex.deh', which can be found here:
+   <http://www.doomworld.com/idgames/?id=15420>
    (utils/exe_edit/patches/chexdeh.zip in your nearest /idgames mirror)
 
 Copy these files into a directory together and use the '-iwad' command
@@ -145,9 +145,9 @@ file is out of date and you need to upgrade.
 Id Software released upgrade patches that will update your game to
 version 1.9.  The following sites have the patches:
 
-  http://www.doomworld.com/files/patches.shtml
-  http://www.doom2.net/doom2/utils.html
-  ftp://ftp.idsoftware.com/idstuff/doom2
+  <http://www.doomworld.com/files/patches.shtml>
+  <http://www.doom2.net/doom2/utils.html>
+  <ftp://ftp.idsoftware.com/idstuff/doom2>
 
 As the patches are binary patches that run as DOS executables, you
 will need to use a DOS emulator (such as DOSBox) to run them.
@@ -162,16 +162,15 @@ Adlib/Soundblaster card.  This is, however, not to everyone's taste.
 As an alternative it is possible to use Timidity for high quality MIDI
 playback:
 
-  http://timidity.sourceforge.net/
+  <http://timidity.sourceforge.net/>
 
 A good set of patches for Timidity is the eawpats collection, which can
 be found here:
 
-  http://www.doomworld.com/idgames/index.php?id=13928
+  <http://www.doomworld.com/idgames/index.php?id=13928>
   (Doom idgames archive, /sounds/eawpats.zip)
 
 When compiling from source, be sure to compile and install timidity
 before installing SDL_mixer.
 
 # vim: tw=70
-
