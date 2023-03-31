@@ -79,7 +79,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Download metadata
-        uses: actions/upload-artifact@v3.1.2
+        uses: actions/upload-artifact@v3
         with:
           name: metadata
       - name: Load metadata from file
