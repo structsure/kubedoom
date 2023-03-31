@@ -10,10 +10,24 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # New job for automatic semantic versioning
+  auto-versioning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump version and push tag
+        id: create_tag
+        uses: anothrNick/github-tag-action@1.61.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+          DRY_RUN: false
+
   build-image:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -23,11 +37,16 @@ jobs:
         with:
           driver-opts: network=host
 
-      - name: Setup Docker metadata
+      - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v4.3.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+            type=sha,format=long
 
       - name: Build Docker image
         uses: docker/build-push-action@v4.0.0
@@ -53,7 +72,7 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
-          driver-opts: network=host
+          driver-opts: network=
 
       - name: Login to the Container registry
         uses: docker/login-action@v2.1.0
@@ -78,3 +97,52 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  release:
+    needs: push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Generate changelog
+        uses: heinrichreimer/action-github-changelog-generator@v2.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: CHANGELOG.md
+
+      - name: Commit and push changelog
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG.md [skip ci]"
+          git push
+
+      - name: Get tag and release version
+        id: version
+        run: |
+          TAG_NAME=$(git describe --abbrev=0 --tags)
+          RELEASE_VERSION=${TAG_NAME#v}
+          echo "::set-output name=tag_name::$TAG_NAME"
+          echo "::set-output name=release_version::$RELEASE_VERSION"
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: Release ${{ steps.version.outputs.release_version }}
+          body: |
+            ${{ env.IMAGE_NAME }} version ${{ steps.version.outputs.release_version }} is now available.
+
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.release_version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Changelog to Release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          files: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
