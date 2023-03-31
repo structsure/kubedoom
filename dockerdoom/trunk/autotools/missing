@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 # Common stub for a few missing GNU programs while installing.
 
 scriptversion=2009-04-28.21 # UTC
