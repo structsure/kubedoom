@@ -45,13 +45,13 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
-            type=sha,format=long
+            type=sha,format=long,prefix=
       - name: Save metadata to file
         run: |
           echo "${{ steps.meta.outputs.tags }}" > tags.txt
           echo "${{ steps.meta.outputs.labels }}" > labels.txt
       - name: Upload metadata
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3.12
         with:
           name: metadata
           path: |
@@ -77,7 +77,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Download metadata
         uses: actions/download-artifact@v2
         with:
