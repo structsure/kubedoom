@@ -111,8 +111,6 @@ jobs:
           base: CHANGELOG.md
 
       - name: Commit and push changelog
-        with:
-          fetch-depth: 0
         run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions@users.noreply.github.com"
