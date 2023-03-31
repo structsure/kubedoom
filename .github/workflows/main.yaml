@@ -105,6 +105,7 @@ jobs:
           platforms: linux/amd64, linux/arm64
           context: .
           push: true
+          load: true
           tags: ${{ env.TAGS }}
           labels: ${{ env.LABELS }}
           cache-from: type=gha
