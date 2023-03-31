@@ -10,7 +10,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # New job for automatic semantic versioning
   auto-versioning:
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +66,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -81,12 +80,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Docker metadata
-        id: meta
-        uses: docker/metadata-action@v4.3.0
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
       - name: Push Docker image
         uses: docker/build-push-action@v4.0.0
         with:
@@ -97,6 +90,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
   release:
     needs: push-image
     runs-on: ubuntu-latest
@@ -110,23 +104,28 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: CHANGELOG.md
 
-      - name: Create Release
+      - name: Commit and push changelog
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG.md [skip ci]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release and Upload Changelog
         id: create_release
         uses: softprops/action-gh-release@v0.1.15
         with:
-          tag_name: 1.0.0
-          name: Release ${{ steps.version.outputs.release_version }}
+          tag_name: ${{ steps.create_tag.outputs.tag }}
+          name: Release ${{ steps.create_tag.outputs.new_version }}
           body: |
-            ${{ env.IMAGE_NAME }} version ${{ steps.version.outputs.release_version }} is now available.
+            ${{ env.IMAGE_NAME }} version ${{ steps.create_tag.outputs.new_version }} is now available.
 
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.release_version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.create_tag.outputs.new_version }}
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Changelog to Release
-        uses: softprops/action-gh-release@v0.1.15
-        with:
           files: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
