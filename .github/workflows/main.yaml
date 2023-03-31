@@ -1,8 +1,11 @@
 ﻿name: Create and publish a Container Image
 
 on:
+  workflow_run:
+    workflows: ["Lint Code Base and Auto-Merge"]
+    types:
+      - completed
   push:
-    branches: [master, main]
     tags: ["[0-9]+.[0-9]+.[0-9]+"]
 
 env:
