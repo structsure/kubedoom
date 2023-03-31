@@ -1,0 +1,14 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubedoom-config
+  namespace: kubedoom
+data:
+  KUBE_DOOM_MEM_REQUEST: "64Mi"
+  KUBE_DOOM_CPU_REQUEST: "100m"
+  KUBE_DOOM_MEM_LIMIT: "128Mi"
+  KUBE_DOOM_CPU_LIMIT: "1"
+  EASY_NOVNC_MEM_REQUEST: "64Mi"
+  EASY_NOVNC_CPU_REQUEST: "100m"
+  EASY_NOVNC_MEM_LIMIT: "128Mi"
+  EASY_NOVNC_CPU_LIMIT: "1"
