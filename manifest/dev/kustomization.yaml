@@ -4,6 +4,7 @@ kind: Kustomization
 
 resources:
   - ../base
+  - extraFodder.yaml
 
 images:
  - name: ghcr.io/storax/kubedoom
