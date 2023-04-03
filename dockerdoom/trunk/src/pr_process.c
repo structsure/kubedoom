@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "doomstat.h"
 #include "info.h"
@@ -106,7 +107,7 @@ void pr_check(void) {
   int pid = 0;
   char namebuf[256];
   char tty[256];
-  int demon = false;
+  int mobType = 0;
 
 // Bypass the 'ps' part of the program entirely if it's an add-on pack
 // to Doom 2 OR we're not on the correct level (e1m1 or map01).
@@ -138,15 +139,14 @@ void pr_check(void) {
     int read_fields = sscanf(buf, "%s\n", namebuf);
     if (read_fields == 1 && namebuf) {
       pid = hash(namebuf);
-      fprintf(stderr, "Demon: %s, %d\n", namebuf, pid);
-      demon = true;
-      add_to_pid_list(pid, namebuf, demon);
+      mobType = strstr(namebuf, "kubedoom") == NULL ? 1 : 0; 
+      fprintf(stderr, "%s: %s, %d\n", mobType == 1 ? "Demon" : "Player", namebuf, pid);
+      add_to_pid_list(pid, namebuf, mobType);
     }
   }
 
   pclose(f);
 }
-
 // add_to_pid_list
 //   The routine add_to_pid_list() does a lot.  It walks the
 // pid mobj linked list to check an actual process versus the

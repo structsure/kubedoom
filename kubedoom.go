@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -65,19 +64,65 @@ func startCmd(cmdstring string) {
 }
 
 type Mode interface {
-	getEntities() []string
+	getEntities() Results
 	deleteEntity(string)
 }
 
 type podmode struct {
 }
+type Results []string
 
-func RemoveIfPresent(slice []string, check string) []string {
-	a := slices.Index(slice, check)
-	if a > 0 {
-		slice = slices.Delete(slice, a, a+1)
+func (r Results) Only(matching string) Results {
+	return r.filterResults(
+		func(inThisString string) bool {
+			return strings.Contains(inThisString, matching)
+		})
+}
+func (r Results) Not(matching string) Results {
+	return r.filterResults(
+		func(inThisString string) bool {
+			return !strings.Contains(inThisString, matching)
+		})
+}
+func (r Results) filterResults(filter func(string) bool) Results {
+	filtered := []string{}
+	for iSlice, vSlice := range r {
+		if filter(vSlice) {
+			filtered = append(filtered, r[iSlice])
+		}
 	}
-	return slice
+	return filtered
+}
+
+func RemoveIfFiltered(slice []string, allFilters []func(string) bool) []string {
+	filtered := []string{}
+	for iSlice, vSlice := range slice {
+		for _, vFilter := range allFilters {
+			if vFilter(vSlice) {
+				filtered = append(filtered, slice[iSlice])
+			}
+		}
+	}
+	return filtered
+}
+func TryEnv(somVar string) string {
+	envVal, exists := os.LookupEnv(somVar)
+	if !exists {
+		log.Printf("%v is not Set", somVar)
+	}
+	return envVal
+}
+func Me() string {
+	return TryEnv("HOSTNAME")
+}
+func RemoveIfPresent(slice []string, check string) []string {
+	removed := []string{}
+	for i, v := range slice {
+		if !strings.Contains(v, check) {
+			removed = append(removed, slice[i])
+		}
+	}
+	return removed
 }
 func getEntitiesK8sClient() []string {
 	// creates the in-cluster config
@@ -120,7 +165,7 @@ func getEntitiesK8sClient() []string {
 		time.Sleep(10 * time.Second)
 	}
 }
-func (m podmode) getEntities() []string {
+func (m podmode) getEntities() Results {
 	var args []string
 	if namespace, exists := os.LookupEnv("NAMESPACE"); exists {
 		args = []string{"kubectl", "get", "pods", "--namespace", namespace, "-o", "go-template", "--template={{range .items}}{{.metadata.namespace}}/{{.metadata.name}} {{end}}"}
@@ -130,27 +175,35 @@ func (m podmode) getEntities() []string {
 	output := outputCmd(args)
 	outputstr := strings.TrimSpace(output)
 	pods := strings.Split(outputstr, " ")
-
-	if mypod, exists := os.LookupEnv("HOSTNAME"); exists {
-		pods = RemoveIfPresent(pods, mypod)
-		log.Printf("Hiding pod: %v", mypod)
-	} else {
-		log.Printf("Could not match pod to hide.")
-	}
 	return pods
 }
-
-func (m podmode) deleteEntity(entity string) {
-	log.Printf("Pod to kill: %v", entity)
+func NsAndPod(entity string) (string, string) {
 	podparts := strings.Split(entity, "/")
-	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", podparts[0], podparts[1])
+	return podparts[0], podparts[1]
+}
+func LabelPod(applyLabel, ns, pod string) (string, string) {
+	log.Printf("Applying label: %v to %v/%v", applyLabel, ns, pod)
+	cmd := exec.Command("/usr/bin/kubectl", "label", "pods", "-n", ns, pod, applyLabel)
+	go cmd.Run()
+	return ns, pod
+}
+func (m podmode) deletePod(ns, pod string) {
+	log.Printf("Pod %v in Namespace %v to kill", pod, ns)
+	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
+	go cmd.Run()
+}
+func (m podmode) deleteEntity(entity string) {
+	log.Printf("Entity to kill: %v", entity)
+	ns, pod := NsAndPod(entity)
+	LabelPod("KilledBy="+TryEnv("Player"), ns, pod)
+	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
 	go cmd.Run()
 }
 
 type nsmode struct {
 }
 
-func (m nsmode) getEntities() []string {
+func (m nsmode) getEntities() Results {
 	args := []string{"kubectl", "get", "namespaces", "-o", "go-template", "--template={{range .items}}{{.metadata.name}} {{end}}"}
 	output := outputCmd(args)
 	outputstr := strings.TrimSpace(output)
@@ -168,18 +221,19 @@ func socketLoop(listener net.Listener, mode Mode) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			panic(err)
+			log.Panicf("calling panic with error: %v", err)
 		}
 		stop := false
 		for !stop {
 			bytes := make([]byte, 40960)
 			n, err := conn.Read(bytes)
 			if err != nil {
+				log.Printf("error reading bytes %v", n)
 				stop = true
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			entities := mode.getEntities()
+			entities := mode.getEntities().Only("kubedoom").Not(Me())
 			if strbytes == "list" {
 				for _, entity := range entities {
 					padding := strings.Repeat("\n", 255-len(entity))
@@ -188,8 +242,6 @@ func socketLoop(listener net.Listener, mode Mode) {
 						log.Fatal("Could not write to socker file")
 					}
 				}
-				conn.Close()
-				stop = true
 			} else if strings.HasPrefix(strbytes, "kill ") {
 				parts := strings.Split(strbytes, " ")
 				killhash, err := strconv.ParseInt(parts[1], 10, 32)
@@ -198,13 +250,16 @@ func socketLoop(listener net.Listener, mode Mode) {
 				}
 				for _, entity := range entities {
 					if hash(entity) == int32(killhash) {
+						log.Printf("calling delete entry for %v", entity)
 						mode.deleteEntity(entity)
 						break
 					}
 				}
-				conn.Close()
-				stop = true
+			} else {
+				log.Printf("received %v from strbytes", strbytes)
 			}
+			conn.Close()
+			stop = true
 		}
 	}
 }
@@ -233,7 +288,7 @@ func main() {
 	log.Print("Create virtual display")
 	startCmd("/usr/bin/Xvfb :99 -ac -screen 0 640x480x24")
 	time.Sleep(time.Duration(2) * time.Second)
-	startCmd("x11vnc -geometry 640x480 -forever -usepw -display :99")
+	startCmd("x11vnc -geometry 640x480 -verbose -forever -usepw -display :99")
 	log.Print("You can now connect to it with a VNC viewer at port 5900")
 
 	log.Print("Trying to start DOOM ...")

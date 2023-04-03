@@ -25,10 +25,10 @@ spec:
               name: vnc
           resources:
             requests:
-              memory: "64Mi"
+              memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "128Mi"
+              memory: "512Mi"
               cpu: "1"
         - image: geek1011/easy-novnc@sha256:c79d386dd660533106a65473650fcf5ddc61319d02183f76c0009349d5dd5ee8
           args:
@@ -41,8 +41,34 @@ spec:
               name: http
           resources:
             requests:
-              memory: "64Mi"
+              memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "128Mi"
+              memory: "256Mi"
               cpu: "1"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: kubedoom
+  labels:
+    app: kubedoom-fodder
+  name: kubedoom-fodder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubedoom-fodder
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: kubedoom-fodder
+    spec:
+      containers:
+      - image: alpine
+        name: alpine
+        command: 
+        - sleep
+        args: 
+        - infinity
