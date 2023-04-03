@@ -46,29 +46,3 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "1"
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: kubedoom
-  labels:
-    app: kubedoom-fodder
-  name: kubedoom-fodder
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: kubedoom-fodder
-  template:
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: kubedoom-fodder
-    spec:
-      containers:
-      - image: alpine
-        name: alpine
-        command: 
-        - sleep
-        args: 
-        - infinity
