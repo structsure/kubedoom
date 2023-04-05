@@ -3,8 +3,7 @@ WORKDIR /go/src/kubedoom
 ADD go.mod go.sum ./
 ADD kubedoom.go debug.go ./
 # RUN go get github.com/go-delve/delve/cmd/dlv
-RUN go build && go install
-# RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubedoom .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubedoom .
 
 
 FROM ubuntu:kinetic AS build-essentials
@@ -41,7 +40,7 @@ RUN mkdir -p \
   /build/usr/local/games
 COPY --from=build-essentials /doom1.wad /build/root
 COPY --from=build-essentials /usr/bin/kubectl /build/usr/bin
-COPY --from=build-kubedoom /go/bin/kubedoom /build/usr/bin
+COPY --from=build-kubedoom /go/src/kubedoom /build/usr/bin
 # COPY --from=build-kubedoom /go/bin/dlv ./
 COPY --from=build-doom /usr/local/games/psdoom /build/usr/local/games
 
