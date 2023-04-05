@@ -5,6 +5,9 @@ TAG:=localhost:5000/kubedoom:latest
 devtools:
 	brew install colima kubernetes-cli k9s yq helm
 
+stop:
+	colima stop -p kubedoom
+
 cluster:
 	colima start -p kubedoom --cpu 8 --memory 16 --kubernetes
 
