@@ -30,17 +30,6 @@ func hash(input string) int32 {
 	return hash
 }
 
-func runCmd(cmdstring string) {
-	parts := strings.Split(cmdstring, " ")
-	cmd := exec.Command(parts[0], parts[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("The following command failed: \"%v\"\n", cmdstring)
-	}
-}
-
 func outputCmd(argv []string) string {
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Stderr = os.Stderr
@@ -108,9 +97,12 @@ func dontPanic[a any](ret *a, err error) *a {
 	}
 	return ret
 }
+func GetClientSet() *kubernetes.Clientset {
+	return kubernetes.NewForConfigOrDie(dontPanic(rest.InClusterConfig()))
+}
 func (m podmode) getEntities() results.Results {
 
-	clientset := kubernetes.NewForConfigOrDie(dontPanic(rest.InClusterConfig()))
+	clientset := GetClientSet()
 	var listoptions = metav1.ListOptions{
 		// LabelSelector: "",
 	}
@@ -136,6 +128,16 @@ func (m podmode) deletePod(ns, pod string) {
 	log.Printf("Pod %v in Namespace %v to kill", pod, ns)
 	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
 	go cmd.Run()
+}
+func (m podmode) deleteEntityOLD(entity string) {
+	log.Printf("Entity to kill: %v", entity)
+	ns, pod := NsAndPod(entity)
+	LabelPod("KilledBy="+TryEnv("Player"), ns, pod)
+	clientset := GetClientSet()
+	clientset.CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
+
+	// cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
+	// go cmd.Run()
 }
 func (m podmode) deleteEntity(entity string) {
 	log.Printf("Entity to kill: %v", entity)
