@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -102,48 +101,6 @@ func RemoveIfPresent(slice []string, check string) []string {
 	}
 	return removed
 }
-func ExampleGetEntitiesK8sClient() []string {
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-	for {
-		// get pods in all the namespaces by omitting namespace
-		// Or specify namespace to get pods in particular namespace
-		var listoptions = metav1.ListOptions{
-			Limit:    500,
-			Continue: "true",
-		}
-		pods, err := clientset.CoreV1().Pods("").List(context.TODO(), listoptions)
-		if err != nil {
-			panic(err.Error())
-		}
-		fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
-
-		// Examples for error handling:
-		// - Use helper functions e.g. errors.IsNotFound()
-		// - And/or cast to StatusError and use its properties like e.g. ErrStatus.Message
-		_, err = clientset.CoreV1().Pods(os.Getenv("NAMESPACE")).Get(context.TODO(), "", metav1.GetOptions{ResourceVersion: ""})
-		if errors.IsNotFound(err) {
-			fmt.Printf("Pod example-xxxxx not found in default namespace\n")
-		} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-			fmt.Printf("Error getting pod %v\n", statusError.ErrStatus.Message)
-		} else if err != nil {
-			panic(err.Error())
-		} else {
-			fmt.Printf("Found example-xxxxx pod in default namespace\n")
-		}
-
-		time.Sleep(10 * time.Second)
-		return []string{"this"}
-	}
-}
 
 func dontPanic[a any](ret *a, err error) *a {
 	if err != nil {
@@ -151,34 +108,20 @@ func dontPanic[a any](ret *a, err error) *a {
 	}
 	return ret
 }
-func getEntitiesK8sClient() []string {
+func (m podmode) getEntities() results.Results {
 
 	clientset := kubernetes.NewForConfigOrDie(dontPanic(rest.InClusterConfig()))
 	var listoptions = metav1.ListOptions{
 		// LabelSelector: "",
 	}
-	pods := dontPanic(clientset.CoreV1().Pods("").List(context.TODO(), listoptions))
-	// pods := dontPanicPTR(clientset.CoreV1().Pods("").List(context.TODO(), listoptions))
-	log.Printf("PODLIST looks like this")
-	log.Printf("%v", pods)
-	return []string{"this"}
+	podList := dontPanic(clientset.CoreV1().Pods("").List(context.TODO(), listoptions))
+	var entities []string
+	for _, pod := range podList.Items {
+		entities = append(entities, fmt.Sprintf("%v/%v", pod.Namespace, pod.Name))
+	}
+	return entities
 }
 
-func (m podmode) getEntities() results.Results {
-	var args []string
-	if namespace, exists := os.LookupEnv("NAMESPACE"); exists {
-		args = []string{"kubectl", "get", "pods", "--namespace", namespace, "-o", "go-template",
-			"--template={{range .items}}{{.metadata.namespace}}/{{.metadata.name}} {{end}}"}
-	} else {
-		args = []string{"kubectl", "get", "pods", "-A", "-o", "go-template", "--template={{range .items}}{{.metadata.namespace}}/{{.metadata.name}} {{end}}"}
-	}
-	getEntitiesK8sClient()
-	output := outputCmd(args)
-	outputstr := strings.TrimSpace(output)
-	pods := strings.Split(outputstr, " ")
-	log.Printf("Pods in Get Entities: %v", pods)
-	return pods
-}
 func NsAndPod(entity string) (string, string) {
 	podparts := strings.Split(entity, "/")
 	return podparts[0], podparts[1]

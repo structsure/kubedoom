@@ -1,6 +1,9 @@
 FROM golang:1.20-alpine AS build-kubedoom
-ADD go/ /go/src/kubedoom
-WORKDIR  /go/src/kubedoom/kubedoom
+ADD go/lib /go/src/go/lib
+ADD go/kubedoom/go.mod go/kubedoom/go.sum /go/src/go/kubedoom/
+WORKDIR /go/src/go/kubedoom
+RUN go mod download
+COPY go/kubedoom/ ./
 # RUN go get github.com/go-delve/delve/cmd/dlv
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubedoom .
 
@@ -39,7 +42,7 @@ RUN mkdir -p \
   /build/usr/local/games
 COPY --from=build-essentials /doom1.wad /build/root
 COPY --from=build-essentials /usr/bin/kubectl /build/usr/bin
-COPY --from=build-kubedoom /go/src/kubedoom/kubedoom /build/usr/bin
+COPY --from=build-kubedoom /go/src/go/kubedoom /build/usr/bin
 # COPY --from=build-kubedoom /go/bin/dlv ./
 COPY --from=build-doom /usr/local/games/psdoom /build/usr/local/games
 
