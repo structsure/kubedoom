@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"kubedoom/results"
 	"log"
 	"net"
 	"os"
@@ -64,34 +65,11 @@ func startCmd(cmdstring string) {
 }
 
 type Mode interface {
-	getEntities() Results
+	getEntities() results.Results
 	deleteEntity(string)
 }
 
 type podmode struct {
-}
-type Results []string
-
-func (r Results) Only(matching string) Results {
-	return r.filterResults(
-		func(inThisString string) bool {
-			return strings.Contains(inThisString, matching)
-		})
-}
-func (r Results) Not(matching string) Results {
-	return r.filterResults(
-		func(inThisString string) bool {
-			return !strings.Contains(inThisString, matching)
-		})
-}
-func (r Results) filterResults(filter func(string) bool) Results {
-	filtered := []string{}
-	for iSlice, vSlice := range r {
-		if filter(vSlice) {
-			filtered = append(filtered, r[iSlice])
-		}
-	}
-	return filtered
 }
 
 func RemoveIfFiltered(slice []string, allFilters []func(string) bool) []string {
@@ -186,7 +164,7 @@ func getEntitiesK8sClient() []string {
 	return []string{"this"}
 }
 
-func (m podmode) getEntities() Results {
+func (m podmode) getEntities() results.Results {
 	var args []string
 	if namespace, exists := os.LookupEnv("NAMESPACE"); exists {
 		args = []string{"kubectl", "get", "pods", "--namespace", namespace, "-o", "go-template",
@@ -227,7 +205,7 @@ func (m podmode) deleteEntity(entity string) {
 type nsmode struct {
 }
 
-func (m nsmode) getEntities() Results {
+func (m nsmode) getEntities() results.Results {
 	args := []string{"kubectl", "get", "namespaces", "-o", "go-template", "--template={{range .items}}{{.metadata.name}} {{end}}"}
 	output := outputCmd(args)
 	outputstr := strings.TrimSpace(output)
