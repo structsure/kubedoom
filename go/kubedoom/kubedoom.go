@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -100,15 +101,12 @@ func dontPanic[a any](ret *a, err error) *a {
 func GetClientSet() *kubernetes.Clientset {
 	return kubernetes.NewForConfigOrDie(dontPanic(rest.InClusterConfig()))
 }
+func GetPods(labels string) *v1.PodList {
+	return dontPanic(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
+}
 func (m podmode) getEntities() results.Results {
-
-	clientset := GetClientSet()
-	var listoptions = metav1.ListOptions{
-		// LabelSelector: "",
-	}
-	podList := dontPanic(clientset.CoreV1().Pods("").List(context.TODO(), listoptions))
 	var entities []string
-	for _, pod := range podList.Items {
+	for _, pod := range GetPods("").Items {
 		entities = append(entities, fmt.Sprintf("%v/%v", pod.Namespace, pod.Name))
 	}
 	return entities
