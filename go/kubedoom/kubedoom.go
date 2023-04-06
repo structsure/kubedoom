@@ -129,12 +129,14 @@ func (m podmode) deletePod(ns, pod string) {
 	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
 	go cmd.Run()
 }
+func deletePod(ns, pod string) {
+	GetClientSet().CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
+}
 func (m podmode) deleteEntityOLD(entity string) {
 	log.Printf("Entity to kill: %v", entity)
 	ns, pod := NsAndPod(entity)
 	LabelPod("KilledBy="+TryEnv("Player"), ns, pod)
-	clientset := GetClientSet()
-	clientset.CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
+	deletePod(ns, pod)
 
 	// cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
 	// go cmd.Run()
