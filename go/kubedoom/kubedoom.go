@@ -106,8 +106,9 @@ func ListPodsWithLabel(labels string) *v1.PodList {
 }
 func (m podmode) getEntities(e chan Entity) {
 	for _, pod := range ListPodsWithLabel("").Items {
-		e <- Entity{pod.Namespace, pod.Name}
+		e <- Entity{pod.Namespace, pod.Name, pod.Status.Message}
 	}
+	close(e)
 }
 func (e Entity) toPS() string {
 	return fmt.Sprintf("%v/%v", e.ns, e.pod)
@@ -115,14 +116,18 @@ func (e Entity) toPS() string {
 func (e Entity) toNsAndPod() (string, string) {
 	return e.ns, e.pod
 }
+
+//	func RunningPods(pod v1.PodInterface) {
+//		// pod.
+//	}
 func LabelPod(ns, pod string) (string, string) {
 	log.Printf("Applying label to %v/%v", ns, pod)
 	vpod := dontPanic(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
-	podLabels := vpod.GetLabels()
-	podLabels["KilledBy"] = "Me"
-	// podLabels["KilledBy"] = TryEnv("Player")
-	vpod.SetLabels(podLabels)
-	dontPanic(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), dontPanic(corev1.ExtractPod(vpod, "fieldmanager")), metav1.ApplyOptions{}))
+	podConfig := dontPanic(corev1.ExtractPod(vpod, "KILLER"))
+	addme := make(map[string]string)
+	addme["KilledBy"] = TryEnv("Player")
+	podConfig.WithLabels(addme)
+	dontPanic(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
 	return ns, pod
 }
 
@@ -146,6 +151,7 @@ func (m nsmode) getEntities(c chan Entity) {
 	for _, namespace := range strings.Split(outputstr, " ") {
 		c <- Entity{ns: namespace}
 	}
+	close(c)
 }
 
 func (m nsmode) deleteEntity(entity Entity) {
@@ -154,8 +160,9 @@ func (m nsmode) deleteEntity(entity Entity) {
 }
 
 type Entity struct {
-	pod string
-	ns  string
+	ns     string
+	pod    string
+	status string
 }
 
 func (entity Entity) Only(matching string) Entity {
@@ -188,24 +195,30 @@ func socketLoop(listener net.Listener, mode Mode) {
 			strbytes := strings.TrimSpace(string(bytes))
 			entityChannel := make(chan Entity)
 			go mode.getEntities(entityChannel)
-			entity := (<-entityChannel).Only("kubedoom").Not(Me())
-			entityString := entity.toPS()
-			if strbytes == "list" {
-				padding := strings.Repeat("\n", 255-len(entityString))
-				go conn.Write([]byte(entityString + padding))
-			} else if strings.HasPrefix(strbytes, "kill ") {
-				parts := strings.Split(strbytes, " ")
-				killhash, err := strconv.ParseInt(parts[1], 10, 32)
-				if err != nil {
-					log.Fatal("Could not parse kill hash")
+			for entity := range entityChannel {
+				log.Printf("entity: %v", entity)
+				if entity.Only("kubedoom").Not(Me()).toPS() == "/" {
+					continue
 				}
-				if hash(entityString) == int32(killhash) {
-					log.Printf("calling delete entry for %v", entity)
-					go mode.deleteEntity(entity)
-					break
+				// log.Printf("Found an entity: %v", entity.toPS())
+				entityString := entity.toPS()
+				if strbytes == "list" {
+					padding := strings.Repeat("\n", 255-len(entityString))
+					go conn.Write([]byte(entityString + padding))
+				} else if strings.HasPrefix(strbytes, "kill ") {
+					parts := strings.Split(strbytes, " ")
+					killhash, err := strconv.ParseInt(parts[1], 10, 32)
+					if err != nil {
+						log.Fatal("Could not parse kill hash")
+					}
+					if hash(entityString) == int32(killhash) {
+						log.Printf("calling delete entry for %v", entity)
+						go mode.deleteEntity(entity)
+						break
+					}
+				} else {
+					log.Printf("received %v from strbytes", strbytes)
 				}
-			} else {
-				log.Printf("received %v from strbytes", strbytes)
 			}
 			conn.Close()
 			stop = true

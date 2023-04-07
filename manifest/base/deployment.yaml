@@ -25,10 +25,10 @@ spec:
               name: vnc
           resources:
             requests:
-              memory: "128Mi"
+              memory: "750Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "1.5Gi"
               cpu: "1"
         - image: geek1011/easy-novnc@sha256:c79d386dd660533106a65473650fcf5ddc61319d02183f76c0009349d5dd5ee8
           args:

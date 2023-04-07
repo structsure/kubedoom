@@ -9,7 +9,7 @@ stop:
 	colima stop -p kubedoom
 
 cluster:
-	colima start -p kubedoom --cpu 8 --memory 16 --kubernetes
+	colima start -p kubedoom --cpu 8 --memory 19 --kubernetes
 
 registry:
 	docker run -d -p 5000:5000 --restart=always --name registry registry
