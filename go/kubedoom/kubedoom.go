@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"kubedoom/results"
 	"log"
 	"net"
 	"os"
@@ -15,6 +14,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -54,8 +54,8 @@ func startCmd(cmdstring string) {
 }
 
 type Mode interface {
-	getEntities() results.Results
-	deleteEntity(string)
+	getEntities(chan Entity)
+	deleteEntity(Entity)
 }
 
 type podmode struct {
@@ -101,69 +101,75 @@ func dontPanic[a any](ret *a, err error) *a {
 func GetClientSet() *kubernetes.Clientset {
 	return kubernetes.NewForConfigOrDie(dontPanic(rest.InClusterConfig()))
 }
-func GetPods(labels string) *v1.PodList {
+func ListPodsWithLabel(labels string) *v1.PodList {
 	return dontPanic(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
 }
-func (m podmode) getEntities() results.Results {
-	var entities []string
-	for _, pod := range GetPods("").Items {
-		entities = append(entities, fmt.Sprintf("%v/%v", pod.Namespace, pod.Name))
+func (m podmode) getEntities(e chan Entity) {
+	for _, pod := range ListPodsWithLabel("").Items {
+		e <- Entity{pod.Namespace, pod.Name}
 	}
-	return entities
 }
-
-func NsAndPod(entity string) (string, string) {
-	podparts := strings.Split(entity, "/")
-	return podparts[0], podparts[1]
+func (e Entity) toPS() string {
+	return fmt.Sprintf("%v/%v", e.ns, e.pod)
 }
-func LabelPod(applyLabel, ns, pod string) (string, string) {
-	log.Printf("Applying label: %v to %v/%v", applyLabel, ns, pod)
-	cmd := exec.Command("/usr/bin/kubectl", "label", "pods", "-n", ns, pod, applyLabel)
-	go cmd.Run()
+func (e Entity) toNsAndPod() (string, string) {
+	return e.ns, e.pod
+}
+func LabelPod(ns, pod string) (string, string) {
+	log.Printf("Applying label to %v/%v", ns, pod)
+	vpod := dontPanic(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
+	podLabels := vpod.GetLabels()
+	podLabels["KilledBy"] = "Me"
+	// podLabels["KilledBy"] = TryEnv("Player")
+	vpod.SetLabels(podLabels)
+	dontPanic(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), dontPanic(corev1.ExtractPod(vpod, "fieldmanager")), metav1.ApplyOptions{}))
 	return ns, pod
 }
-func (m podmode) deletePod(ns, pod string) {
-	log.Printf("Pod %v in Namespace %v to kill", pod, ns)
-	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
-	go cmd.Run()
-}
-func deletePod(ns, pod string) {
+
+func DeletePod(ns, pod string) {
 	GetClientSet().CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
 }
-func (m podmode) deleteEntityOLD(entity string) {
-	log.Printf("Entity to kill: %v", entity)
-	ns, pod := NsAndPod(entity)
-	LabelPod("KilledBy="+TryEnv("Player"), ns, pod)
-	deletePod(ns, pod)
-
-	// cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
-	// go cmd.Run()
-}
-func (m podmode) deleteEntity(entity string) {
-	log.Printf("Entity to kill: %v", entity)
-	ns, pod := NsAndPod(entity)
-	LabelPod("KilledBy="+TryEnv("Player"), ns, pod)
-	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", ns, pod)
-	go cmd.Run()
+func (m podmode) deleteEntity(entity Entity) {
+	log.Printf("Entity to kill: %v", entity.toPS())
+	ns, pod := entity.toNsAndPod()
+	LabelPod(ns, pod)
+	DeletePod(ns, pod)
 }
 
 type nsmode struct {
 }
 
-func (m nsmode) getEntities() results.Results {
+func (m nsmode) getEntities(c chan Entity) {
 	args := []string{"kubectl", "get", "namespaces", "-o", "go-template", "--template={{range .items}}{{.metadata.name}} {{end}}"}
 	output := outputCmd(args)
 	outputstr := strings.TrimSpace(output)
-	namespaces := strings.Split(outputstr, " ")
-	return namespaces
+	for _, namespace := range strings.Split(outputstr, " ") {
+		c <- Entity{ns: namespace}
+	}
 }
 
-func (m nsmode) deleteEntity(entity string) {
+func (m nsmode) deleteEntity(entity Entity) {
 	log.Printf("Namespace to kill: %v", entity)
-	cmd := exec.Command("/usr/bin/kubectl", "delete", "namespace", entity)
-	go cmd.Run()
+	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.ns).Run()
 }
 
+type Entity struct {
+	pod string
+	ns  string
+}
+
+func (entity Entity) Only(matching string) Entity {
+	if strings.Contains(entity.pod, matching) || strings.Contains(entity.ns, matching) {
+		return entity
+	}
+	return Entity{}
+}
+func (entity Entity) Not(matching string) Entity {
+	if !strings.Contains(entity.pod, matching) && !strings.Contains(entity.ns, matching) {
+		return entity
+	}
+	return Entity{}
+}
 func socketLoop(listener net.Listener, mode Mode) {
 	for {
 		conn, err := listener.Accept()
@@ -180,27 +186,23 @@ func socketLoop(listener net.Listener, mode Mode) {
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			entities := mode.getEntities().Only("kubedoom").Not(Me())
+			entityChannel := make(chan Entity)
+			go mode.getEntities(entityChannel)
+			entity := (<-entityChannel).Only("kubedoom").Not(Me())
+			entityString := entity.toPS()
 			if strbytes == "list" {
-				for _, entity := range entities {
-					padding := strings.Repeat("\n", 255-len(entity))
-					_, err = conn.Write([]byte(entity + padding))
-					if err != nil {
-						log.Fatal("Could not write to socker file")
-					}
-				}
+				padding := strings.Repeat("\n", 255-len(entityString))
+				go conn.Write([]byte(entityString + padding))
 			} else if strings.HasPrefix(strbytes, "kill ") {
 				parts := strings.Split(strbytes, " ")
 				killhash, err := strconv.ParseInt(parts[1], 10, 32)
 				if err != nil {
 					log.Fatal("Could not parse kill hash")
 				}
-				for _, entity := range entities {
-					if hash(entity) == int32(killhash) {
-						log.Printf("calling delete entry for %v", entity)
-						mode.deleteEntity(entity)
-						break
-					}
+				if hash(entityString) == int32(killhash) {
+					log.Printf("calling delete entry for %v", entity)
+					go mode.deleteEntity(entity)
+					break
 				}
 			} else {
 				log.Printf("received %v from strbytes", strbytes)
