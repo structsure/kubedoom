@@ -4,6 +4,10 @@ name: Container Build
 on:
   push:
     tags: ['[0-9]+.[0-9]+.[0-9]+']
+    branches:
+      - master
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 jobs:
   build:
@@ -21,12 +25,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      - name: Set some variables for the image
+        run: |
+          # Short name for current branch. For PRs, use source branch.
+          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          GIT_TAG=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/tags/}}
+          echo "IMAGE_TAG=${GIT_TAG:-GIT_BRANCH}" >> ${GITHUB_ENV}
       - uses: docker/build-push-action@v2
         with:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |-
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+            ghcr.io/${{ github.repository }}:${{ env.IMAGE_TAG }}
