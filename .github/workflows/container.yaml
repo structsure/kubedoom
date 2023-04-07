@@ -23,8 +23,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: version
-        run: echo ::set-output name=
       - name: Set some variables for the image
         run: |
           # Short name for current branch. For PRs, use source branch.
