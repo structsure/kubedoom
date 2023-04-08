@@ -123,7 +123,9 @@ func (e Entity) toNsAndPod() (string, string) {
 func LabelPod(ns, pod string) (string, string) {
 	log.Printf("Applying label to %v/%v", ns, pod)
 	vpod := dontPanic(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
-	podConfig := dontPanic(corev1.ExtractPod(vpod, "KILLER"))
+	log.Printf("Pod %v", vpod)
+	podConfig := dontPanic(
+		corev1.ExtractPod(vpod, "KILLER"))
 	addme := make(map[string]string)
 	addme["KilledBy"] = TryEnv("Player")
 	podConfig.WithLabels(addme)
@@ -137,7 +139,7 @@ func DeletePod(ns, pod string) {
 func (m podmode) deleteEntity(entity Entity) {
 	log.Printf("Entity to kill: %v", entity.toPS())
 	ns, pod := entity.toNsAndPod()
-	LabelPod(ns, pod)
+	// LabelPod(ns, pod)
 	DeletePod(ns, pod)
 }
 
@@ -197,7 +199,8 @@ func socketLoop(listener net.Listener, mode Mode) {
 			go mode.getEntities(entityChannel)
 			for entity := range entityChannel {
 				log.Printf("entity: %v", entity)
-				if entity.Only("kubedoom").Not(Me()).toPS() == "/" {
+				// if entity.Only("kubedoom").Not(Me()).toPS() == "/" {
+				if entity.Not(Me()).toPS() == "/" {
 					continue
 				}
 				// log.Printf("Found an entity: %v", entity.toPS())
