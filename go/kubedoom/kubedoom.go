@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"kubedoom/entity"
 	"log"
 	"net"
 	"os"
@@ -54,8 +54,8 @@ func startCmd(cmdstring string) {
 }
 
 type Mode interface {
-	getEntities(chan Entity)
-	deleteEntity(Entity)
+	getEntities(chan entity.Entity)
+	deleteEntity(entity.Entity)
 }
 
 type podmode struct {
@@ -104,22 +104,13 @@ func GetClientSet() *kubernetes.Clientset {
 func ListPodsWithLabel(labels string) *v1.PodList {
 	return dontPanic(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
 }
-func (m podmode) getEntities(e chan Entity) {
+func (m podmode) getEntities(e chan entity.Entity) {
 	for _, pod := range ListPodsWithLabel("").Items {
-		e <- Entity{pod.Namespace, pod.Name, pod.Status.Message}
+		e <- entity.Entity{Namespace: pod.Namespace, Pod: pod.Name, Phase: string(pod.Status.Phase)}
 	}
 	close(e)
 }
-func (e Entity) toPS() string {
-	return fmt.Sprintf("%v/%v", e.ns, e.pod)
-}
-func (e Entity) toNsAndPod() (string, string) {
-	return e.ns, e.pod
-}
 
-//	func RunningPods(pod v1.PodInterface) {
-//		// pod.
-//	}
 func LabelPod(ns, pod string) (string, string) {
 	log.Printf("Applying label to %v/%v", ns, pod)
 	vpod := dontPanic(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
@@ -136,9 +127,9 @@ func LabelPod(ns, pod string) (string, string) {
 func DeletePod(ns, pod string) {
 	GetClientSet().CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
 }
-func (m podmode) deleteEntity(entity Entity) {
-	log.Printf("Entity to kill: %v", entity.toPS())
-	ns, pod := entity.toNsAndPod()
+func (m podmode) deleteEntity(entity entity.Entity) {
+	log.Printf("Entity to kill: %v", entity.ToPS())
+	ns, pod := entity.ToNsAndPod()
 	// LabelPod(ns, pod)
 	DeletePod(ns, pod)
 }
@@ -146,39 +137,21 @@ func (m podmode) deleteEntity(entity Entity) {
 type nsmode struct {
 }
 
-func (m nsmode) getEntities(c chan Entity) {
+func (m nsmode) getEntities(c chan entity.Entity) {
 	args := []string{"kubectl", "get", "namespaces", "-o", "go-template", "--template={{range .items}}{{.metadata.name}} {{end}}"}
 	output := outputCmd(args)
 	outputstr := strings.TrimSpace(output)
 	for _, namespace := range strings.Split(outputstr, " ") {
-		c <- Entity{ns: namespace}
+		c <- entity.Entity{Namespace: namespace}
 	}
 	close(c)
 }
 
-func (m nsmode) deleteEntity(entity Entity) {
+func (m nsmode) deleteEntity(entity entity.Entity) {
 	log.Printf("Namespace to kill: %v", entity)
-	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.ns).Run()
+	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.Namespace).Run()
 }
 
-type Entity struct {
-	ns     string
-	pod    string
-	status string
-}
-
-func (entity Entity) Only(matching string) Entity {
-	if strings.Contains(entity.pod, matching) || strings.Contains(entity.ns, matching) {
-		return entity
-	}
-	return Entity{}
-}
-func (entity Entity) Not(matching string) Entity {
-	if !strings.Contains(entity.pod, matching) && !strings.Contains(entity.ns, matching) {
-		return entity
-	}
-	return Entity{}
-}
 func socketLoop(listener net.Listener, mode Mode) {
 	for {
 		conn, err := listener.Accept()
@@ -195,16 +168,20 @@ func socketLoop(listener net.Listener, mode Mode) {
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			entityChannel := make(chan Entity)
+			entityChannel := make(chan entity.Entity)
 			go mode.getEntities(entityChannel)
 			for entity := range entityChannel {
-				log.Printf("entity: %v", entity)
-				// if entity.Only("kubedoom").Not(Me()).toPS() == "/" {
-				if entity.Not(Me()).toPS() == "/" {
+				log.Printf("entity: %v is currently %v", entity, entity.Phase)
+				if entity.
+					Not(Me()).
+					Not("istio").
+					Not("kube-system").
+					IsCurrently("Running").
+					ToPS() == "/" {
 					continue
 				}
 				// log.Printf("Found an entity: %v", entity.toPS())
-				entityString := entity.toPS()
+				entityString := entity.ToPS()
 				if strbytes == "list" {
 					padding := strings.Repeat("\n", 255-len(entityString))
 					go conn.Write([]byte(entityString + padding))
