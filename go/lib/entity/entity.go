@@ -23,15 +23,22 @@ func (entity Entity) IsCurrently(inPhase string) Entity {
 	}
 	return Entity{}
 }
-func (entity Entity) Only(matching string) Entity {
-	if strings.Contains(entity.Pod, matching) || strings.Contains(entity.Namespace, matching) {
+func (entity Entity) Only(matcher string) Entity {
+	if strings.Contains(entity.Pod, matcher) || strings.Contains(entity.Namespace, matcher) {
 		return entity
 	}
 	return Entity{}
 }
-func (entity Entity) Not(matching string) Entity {
-	if !strings.Contains(entity.Pod, matching) && !strings.Contains(entity.Namespace, matching) {
+func (entity Entity) Not(matcher string) Entity {
+	if !strings.Contains(entity.Pod, matcher) && !strings.Contains(entity.Namespace, matcher) {
 		return entity
 	}
 	return Entity{}
+}
+func (entity Entity) NotList(matchers, delmiter string) []Entity {
+	entities := []Entites{}
+	for _, matcher := range strings.Split(matchers, delmiter) {
+		append(attenties, entity.Not(matcher))
+	}
+	return entities
 }

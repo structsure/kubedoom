@@ -106,15 +106,15 @@ func ListPodsWithLabel(labels string) *v1.PodList {
 }
 func (m podmode) getEntities(e chan entity.Entity) {
 	for _, pod := range ListPodsWithLabel("").Items {
-		e <- entity.Entity{Namespace: pod.Namespace, Pod: pod.Name, Phase: string(pod.Status.Phase)}
+		e <- entity.Entity{Namespace: pod.Namespace, Pod: pod.Name, Phase: pod.Status.Phase}
 	}
 	close(e)
 }
 
 func LabelPod(ns, pod string) (string, string) {
-	log.Printf("Applying label to %v/%v", ns, pod)
+	kLog("Applying label", ns, pod)
 	vpod := dontPanic(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
-	log.Printf("Pod %v", vpod)
+	// log.Printf("Pod %v", vpod)
 	podConfig := dontPanic(
 		corev1.ExtractPod(vpod, "KILLER"))
 	addme := make(map[string]string)
@@ -123,15 +123,21 @@ func LabelPod(ns, pod string) (string, string) {
 	dontPanic(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
 	return ns, pod
 }
+func TallyKill(ns, pod string) {
+	kLog("Tally kill", ns, pod)
+}
 
 func DeletePod(ns, pod string) {
 	GetClientSet().CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
 }
 func (m podmode) deleteEntity(entity entity.Entity) {
-	log.Printf("Entity to kill: %v", entity.ToPS())
+	kLog("Entity to kill", ns, pod)
 	ns, pod := entity.ToNsAndPod()
-	// LabelPod(ns, pod)
+	LabelPod(ns, pod)
 	DeletePod(ns, pod)
+}
+func kLog(message, namespaces, pod string) {
+	log.Printf("%v: %v/%v", message, namespace, pod)
 }
 
 type nsmode struct {
@@ -148,7 +154,7 @@ func (m nsmode) getEntities(c chan entity.Entity) {
 }
 
 func (m nsmode) deleteEntity(entity entity.Entity) {
-	log.Printf("Namespace to kill: %v", entity)
+	kLog("Namespace to kill", entity.ns, entity.Pod)
 	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.Namespace).Run()
 }
 
@@ -172,13 +178,15 @@ func socketLoop(listener net.Listener, mode Mode) {
 			go mode.getEntities(entityChannel)
 			for entity := range entityChannel {
 				log.Printf("entity: %v is currently %v", entity, entity.Phase)
-				if entity.
+				if TryEnv("VIP") || entity.
 					Not(Me()).
 					Not("istio").
 					Not("kube-system").
+					Not("grafana").
 					IsCurrently("Running").
-					ToPS() == "/" {
-					continue
+					ToPS() == "/"{
+						continue
+					}
 				}
 				// log.Printf("Found an entity: %v", entity.toPS())
 				entityString := entity.ToPS()
