@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 func TestHash(t *testing.T) {
 
@@ -10,4 +13,13 @@ func TestHash(t *testing.T) {
 	if got != want {
 		t.Errorf("got %q want %q", got, want)
 	}
+}
+func TestAddString(t *testing.T) {
+	tryAToI("", t.Log)
+	tryAToI("0", t.Log)
+}
+
+func tryAToI(astr string, f func(args ...any)) {
+	val, _ := strconv.Atoi(astr)
+	f("%v == %v", astr, val)
 }

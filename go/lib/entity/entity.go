@@ -36,9 +36,9 @@ func (entity Entity) Not(matcher string) Entity {
 	return Entity{}
 }
 func (entity Entity) NotList(matchers, delmiter string) []Entity {
-	entities := []Entites{}
+	var entities []Entity
 	for _, matcher := range strings.Split(matchers, delmiter) {
-		append(attenties, entity.Not(matcher))
+		entities = append(entities, entity.Not(matcher))
 	}
 	return entities
 }

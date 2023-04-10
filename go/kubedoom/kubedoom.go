@@ -92,51 +92,66 @@ func RemoveIfPresent(slice []string, check string) []string {
 	return removed
 }
 
-func dontPanic[a any](ret *a, err error) *a {
+func dontPanicPtr[a any](ret *a, err error) *a {
+	if err != nil {
+		panic(err.Error())
+	}
+	return ret
+}
+func dontPanic[a any](ret a, err error) a {
 	if err != nil {
 		panic(err.Error())
 	}
 	return ret
 }
 func GetClientSet() *kubernetes.Clientset {
-	return kubernetes.NewForConfigOrDie(dontPanic(rest.InClusterConfig()))
+	return kubernetes.NewForConfigOrDie(dontPanicPtr(rest.InClusterConfig()))
 }
 func ListPodsWithLabel(labels string) *v1.PodList {
-	return dontPanic(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
+	return dontPanicPtr(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
 }
 func (m podmode) getEntities(e chan entity.Entity) {
 	for _, pod := range ListPodsWithLabel("").Items {
-		e <- entity.Entity{Namespace: pod.Namespace, Pod: pod.Name, Phase: pod.Status.Phase}
+		e <- entity.Entity{Namespace: pod.Namespace, Pod: pod.Name, Phase: string(pod.Status.Phase)}
 	}
 	close(e)
 }
-
+func getPod(ns, pod string) *v1.Pod {
+	return dontPanicPtr(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
+}
 func LabelPod(ns, pod string) (string, string) {
 	kLog("Applying label", ns, pod)
-	vpod := dontPanic(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
+	vpod := getPod(ns, pod)
 	// log.Printf("Pod %v", vpod)
-	podConfig := dontPanic(
+	podConfig := dontPanicPtr(
 		corev1.ExtractPod(vpod, "KILLER"))
 	addme := make(map[string]string)
 	addme["KilledBy"] = TryEnv("Player")
 	podConfig.WithLabels(addme)
-	dontPanic(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
+	dontPanicPtr(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
 	return ns, pod
 }
 func TallyKill(ns, pod string) {
 	kLog("Tally kill", ns, pod)
+	annotations := getPod(ns, pod).Annotations
+	kills := 0
+	if annotations["Kills"] != "" {
+		kills = dontPanic(strconv.Atoi(annotations["Kills"]))
+	}
+	kills += 1
+	annotations["Kills"] = strconv.Itoa(kills)
 }
 
 func DeletePod(ns, pod string) {
 	GetClientSet().CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
 }
 func (m podmode) deleteEntity(entity entity.Entity) {
-	kLog("Entity to kill", ns, pod)
+	kLog("Entity to kill", entity.Namespace, entity.Pod)
 	ns, pod := entity.ToNsAndPod()
 	LabelPod(ns, pod)
 	DeletePod(ns, pod)
 }
-func kLog(message, namespaces, pod string) {
+func kLog(message, namespace, pod string) {
 	log.Printf("%v: %v/%v", message, namespace, pod)
 }
 
@@ -154,7 +169,7 @@ func (m nsmode) getEntities(c chan entity.Entity) {
 }
 
 func (m nsmode) deleteEntity(entity entity.Entity) {
-	kLog("Namespace to kill", entity.ns, entity.Pod)
+	kLog("Namespace to kill", entity.Namespace, entity.Pod)
 	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.Namespace).Run()
 }
 
@@ -178,15 +193,14 @@ func socketLoop(listener net.Listener, mode Mode) {
 			go mode.getEntities(entityChannel)
 			for entity := range entityChannel {
 				log.Printf("entity: %v is currently %v", entity, entity.Phase)
-				if TryEnv("VIP") || entity.
+				if entity.
 					Not(Me()).
 					Not("istio").
 					Not("kube-system").
 					Not("grafana").
 					IsCurrently("Running").
-					ToPS() == "/"{
-						continue
-					}
+					ToPS() == "/" {
+					continue
 				}
 				// log.Printf("Found an entity: %v", entity.toPS())
 				entityString := entity.ToPS()
