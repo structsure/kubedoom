@@ -121,10 +121,10 @@ func getPod(e entity.Entity) *v1.Pod {
 }
 func LabelPod(e entity.Entity) {
 	e.Log("Applying label")
-	vpod := getPod(e)
+	pod := getPod(e)
 	// log.Printf("Pod %v", vpod)
 	podConfig := dontPanicPtr(
-		corev1.ExtractPod(vpod, "KILLER"))
+		corev1.ExtractPod(pod, "KILLER"))
 	addme := make(map[string]string)
 	addme["KilledBy"] = TryEnv("Player")
 	podConfig.WithLabels(addme)
@@ -140,7 +140,13 @@ func TallyKill(entity entity.Entity) {
 	}
 	kills += 1
 	annotations["Kills"] = strconv.Itoa(kills)
+	podConfig := dontPanicPtr(
+		corev1.ExtractPod(pod, "KILLER"))
 
+	GetClientSet().CoreV1().Pods(entity.Namespace).
+		Apply(context.TODO(),
+			podConfig.WithAnnotations(annotations),
+			metav1.ApplyOptions{FieldManager: "KILLER"})
 }
 
 func DeletePod(e entity.Entity) {
@@ -148,7 +154,7 @@ func DeletePod(e entity.Entity) {
 }
 func (m podmode) deleteEntity(entity entity.Entity) {
 	entity.Log("Entity to kill")
-	LabelPod(entity)
+	TallyKill(entity)
 	DeletePod(entity)
 }
 
