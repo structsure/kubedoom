@@ -2,6 +2,7 @@ package entity
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -11,6 +12,9 @@ type Entity struct {
 	Phase     string
 }
 
+func (e Entity) Log(message string) {
+	log.Printf("%v: %v/%v while %v", message, e.Namespace, e.Pod, e.Phase)
+}
 func (entity Entity) ToPS() string {
 	return fmt.Sprintf("%v/%v", entity.Namespace, entity.Pod)
 }

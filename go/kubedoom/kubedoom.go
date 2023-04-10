@@ -116,43 +116,40 @@ func (m podmode) getEntities(e chan entity.Entity) {
 	}
 	close(e)
 }
-func getPod(ns, pod string) *v1.Pod {
-	return dontPanicPtr(GetClientSet().CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}))
+func getPod(e entity.Entity) *v1.Pod {
+	return dontPanicPtr(GetClientSet().CoreV1().Pods(e.Namespace).Get(context.TODO(), e.Pod, metav1.GetOptions{}))
 }
-func LabelPod(ns, pod string) (string, string) {
-	kLog("Applying label", ns, pod)
-	vpod := getPod(ns, pod)
+func LabelPod(e entity.Entity) {
+	e.Log("Applying label")
+	vpod := getPod(e)
 	// log.Printf("Pod %v", vpod)
 	podConfig := dontPanicPtr(
 		corev1.ExtractPod(vpod, "KILLER"))
 	addme := make(map[string]string)
 	addme["KilledBy"] = TryEnv("Player")
 	podConfig.WithLabels(addme)
-	dontPanicPtr(GetClientSet().CoreV1().Pods(ns).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
-	return ns, pod
+	dontPanicPtr(GetClientSet().CoreV1().Pods(e.Namespace).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
 }
-func TallyKill(ns, pod string) {
-	kLog("Tally kill", ns, pod)
-	annotations := getPod(ns, pod).Annotations
+func TallyKill(entity entity.Entity) {
+	entity.Log("Tally kill")
+	pod := getPod(entity)
+	annotations := pod.Annotations
 	kills := 0
 	if annotations["Kills"] != "" {
 		kills = dontPanic(strconv.Atoi(annotations["Kills"]))
 	}
 	kills += 1
 	annotations["Kills"] = strconv.Itoa(kills)
+
 }
 
-func DeletePod(ns, pod string) {
-	GetClientSet().CoreV1().Pods(ns).Delete(context.TODO(), pod, metav1.DeleteOptions{})
+func DeletePod(e entity.Entity) {
+	GetClientSet().CoreV1().Pods(e.Namespace).Delete(context.TODO(), e.Pod, metav1.DeleteOptions{})
 }
 func (m podmode) deleteEntity(entity entity.Entity) {
-	kLog("Entity to kill", entity.Namespace, entity.Pod)
-	ns, pod := entity.ToNsAndPod()
-	LabelPod(ns, pod)
-	DeletePod(ns, pod)
-}
-func kLog(message, namespace, pod string) {
-	log.Printf("%v: %v/%v", message, namespace, pod)
+	entity.Log("Entity to kill")
+	LabelPod(entity)
+	DeletePod(entity)
 }
 
 type nsmode struct {
@@ -169,7 +166,7 @@ func (m nsmode) getEntities(c chan entity.Entity) {
 }
 
 func (m nsmode) deleteEntity(entity entity.Entity) {
-	kLog("Namespace to kill", entity.Namespace, entity.Pod)
+	entity.Log("Namespace to kill")
 	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.Namespace).Run()
 }
 
