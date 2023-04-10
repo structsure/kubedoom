@@ -2,6 +2,9 @@
 resources:
   - ../base
 
+patches:
+  - deployment.yaml
+
 images:
  - name: ghcr.io/storax/kubedoom
    newName: localhost:5000/kubedoom

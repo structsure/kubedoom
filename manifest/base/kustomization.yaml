@@ -1,6 +1,6 @@
 ---
 resources:
   - namespace.yaml
-  - deployment.yaml
+  - blue.yaml
+  - orange.yaml
   - rbac.yaml
-  - service.yaml
