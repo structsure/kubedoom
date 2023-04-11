@@ -100,8 +100,7 @@ func (m podmode) getEntities() []string {
 func (m podmode) deleteEntity(entity string) {
 	log.Printf("Pod to kill: %v", entity)
 	podparts := strings.Split(entity, "/")
-	cmd := exec.Command("/usr/bin/kubectl", "delete", "pod", "-n", podparts[0], podparts[1])
-	go cmd.Run()
+	go GetClientSet().CoreV1().Pods(podparts[0]).Delete(context.TODO(), podparts[1], metav1.DeleteOptions{})
 }
 
 type nsmode struct {
