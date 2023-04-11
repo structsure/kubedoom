@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
@@ -9,6 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 func hash(input string) int32 {
@@ -64,16 +70,30 @@ type Mode interface {
 type podmode struct {
 }
 
-func (m podmode) getEntities() []string {
-	var args []string
-	if namespace, exists := os.LookupEnv("NAMESPACE"); exists {
-		args = []string{"kubectl", "get", "pods", "--namespace", namespace, "-o", "go-template", "--template={{range .items}}{{.metadata.namespace}}/{{.metadata.name}} {{end}}"}
-	} else {
-		args = []string{"kubectl", "get", "pods", "-A", "-o", "go-template", "--template={{range .items}}{{.metadata.namespace}}/{{.metadata.name}} {{end}}"}
+func dontPanicPtr[a any](ret *a, err error) *a {
+	if err != nil {
+		panic(err.Error())
 	}
-	output := outputCmd(args)
-	outputstr := strings.TrimSpace(output)
-	pods := strings.Split(outputstr, " ")
+	return ret
+}
+func dontPanic[a any](ret a, err error) a {
+	if err != nil {
+		panic(err.Error())
+	}
+	return ret
+}
+func GetClientSet() *kubernetes.Clientset {
+	return kubernetes.NewForConfigOrDie(dontPanicPtr(rest.InClusterConfig()))
+}
+func ListPodsWithLabel(labels string) *v1.PodList {
+	return dontPanicPtr(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
+}
+
+func (m podmode) getEntities() []string {
+	var pods []string
+	for _, pod := range ListPodsWithLabel("").Items {
+		pods = append(pods, pod.Namespace+"/"+pod.Name)
+	}
 	return pods
 }
 
