@@ -1,6 +1,6 @@
 FROM golang:1.20-alpine AS build-kubedoom
 WORKDIR /go/src/kubedoom
-ADD go.mod .
+ADD go.mod go.sum ./
 ADD kubedoom.go .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubedoom .
 
