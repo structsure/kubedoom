@@ -242,7 +242,7 @@ void add_to_pid_list(int pid, const char *name, int demon) {
             // much of the following code is taken from the routines
             // PIT_VileCheck() and A_VileChase() in p_enemy.c
 
-            if ( !(pid_list_pos->m_draw_pid_info) && false) {  // if Doom thinks
+            if ( !(pid_list_pos->m_draw_pid_info)) {  // if Doom thinks
                                                        // the process is
                                                        // dead
 
