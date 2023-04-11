@@ -120,7 +120,7 @@ func getPod(e entity.Entity) *v1.Pod {
 	return dontPanicPtr(GetClientSet().CoreV1().Pods(e.Namespace).Get(context.TODO(), e.Pod, metav1.GetOptions{}))
 }
 func LabelPod(e entity.Entity) {
-	e.Log("Applying label")
+	// e.Log("Applying label")
 	pod := getPod(e)
 	// log.Printf("Pod %v", vpod)
 	podConfig := dontPanicPtr(
@@ -131,7 +131,7 @@ func LabelPod(e entity.Entity) {
 	dontPanicPtr(GetClientSet().CoreV1().Pods(e.Namespace).Apply(context.TODO(), podConfig, metav1.ApplyOptions{FieldManager: "KILLER"}))
 }
 func TallyKill(entity entity.Entity) {
-	entity.Log("Tally kill")
+	// entity.Log("Tally kill")
 	pod := getPod(entity)
 	annotations := pod.Annotations
 	kills := 0
@@ -154,7 +154,7 @@ func DeletePod(e entity.Entity) {
 }
 func (m podmode) deleteEntity(entity entity.Entity) {
 	entity.Log("Entity to kill")
-	TallyKill(entity)
+	LabelPod(entity)
 	DeletePod(entity)
 }
 
@@ -172,7 +172,7 @@ func (m nsmode) getEntities(c chan entity.Entity) {
 }
 
 func (m nsmode) deleteEntity(entity entity.Entity) {
-	entity.Log("Namespace to kill")
+	// entity.Log("Namespace to kill")
 	exec.Command("/usr/bin/kubectl", "delete", "namespace", entity.Namespace).Run()
 }
 
@@ -201,6 +201,7 @@ func socketLoop(listener net.Listener, mode Mode) {
 					Not("istio").
 					Not("kube-system").
 					Not("grafana").
+					Not("prometheus").
 					IsCurrently("Running").
 					ToPS() == "/" {
 					continue

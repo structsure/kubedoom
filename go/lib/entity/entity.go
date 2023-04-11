@@ -22,7 +22,7 @@ func (entity Entity) ToNsAndPod() (string, string) {
 	return entity.Namespace, entity.Pod
 }
 func (entity Entity) IsCurrently(inPhase string) Entity {
-	entity.Log("Is Currently")
+	// entity.Log("Is Currently")
 	if strings.Contains(entity.Phase, inPhase) {
 		return entity
 	}
