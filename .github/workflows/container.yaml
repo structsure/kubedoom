@@ -25,16 +25,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set some variables for the image
-        run: |
-          # Short name for current branch. For PRs, use source branch.
-          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-          GIT_TAG=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/tags/}}
-          echo "IMAGE_TAG=${GIT_TAG:-GIT_BRANCH}" >> ${GITHUB_ENV}
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v3.x
       - uses: docker/build-push-action@v2
         with:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |-
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ env.IMAGE_TAG }}
+            ghcr.io/${{ github.repository }}:${{ env.GITHUB_REF_SLUG }}
