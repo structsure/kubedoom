@@ -4,6 +4,8 @@ kind: ServiceAccount
 metadata:
   name: kubedoom
   namespace: kubedoom
+imagePullSecrets:
+  - name: ghcr-creds
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
