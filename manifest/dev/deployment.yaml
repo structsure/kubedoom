@@ -7,7 +7,8 @@ metadata:
 spec:
   template:
     spec:
-      nodeSelector: {}
+      nodeSelector:
+        kubernetes.io/hostname: ~
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,4 +18,5 @@ metadata:
 spec:
   template:
     spec:
-      nodeSelector: {}
+      nodeSelector:
+        kubernetes.io/hostname: ~
