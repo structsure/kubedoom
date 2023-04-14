@@ -70,23 +70,21 @@ type Mode interface {
 type podmode struct {
 }
 
-func dontPanicPtr[a any](ret *a, err error) *a {
-	if err != nil {
-		panic(err.Error())
-	}
-	return ret
-}
-func dontPanic[a any](ret a, err error) a {
-	if err != nil {
-		panic(err.Error())
-	}
-	return ret
-}
 func GetClientSet() *kubernetes.Clientset {
-	return kubernetes.NewForConfigOrDie(dontPanicPtr(rest.InClusterConfig()))
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err)
+	}
+	return kubernetes.NewForConfigOrDie(config)
 }
+
 func ListPodsWithLabel(labels string) *v1.PodList {
-	return dontPanicPtr(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: labels}))
+	client := GetClientSet().CoreV1().Pods("")
+	podList, err := client.List(context.TODO(), metav1.ListOptions{LabelSelector: labels})
+	if err != nil {
+		panic(err)
+	}
+	return podList
 }
 
 func (m podmode) getEntities() []string {
