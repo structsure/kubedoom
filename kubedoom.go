@@ -157,17 +157,18 @@ func main() {
 	startCmd("/usr/bin/env DISPLAY=:99 /usr/local/games/psdoom -warp -E1M1 -skill 1 -nomouse -nosound")
 
 	podsListChan := make(chan *v1.PodList)
-	// query the running pods every 10 sec
+	// query the running pods every 5 sec
 	go func() {
 		clientset := NewClientSet()
 
 		for {
-			podsList, err := clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+			options := metav1.ListOptions{FieldSelector: "status.phase=Running"}
+			podsList, err := clientset.CoreV1().Pods("").List(context.Background(), options)
 			podsListChan <- podsList
 			if err != nil {
 				log.Fatal(err)
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
 	}()
 
