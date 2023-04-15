@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -61,7 +62,7 @@ func startCmd(cmdstring string) {
 	}
 }
 
-func GetClientSet() *kubernetes.Clientset {
+func NewClientSet() *kubernetes.Clientset {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err)
@@ -69,30 +70,19 @@ func GetClientSet() *kubernetes.Clientset {
 	return kubernetes.NewForConfigOrDie(config)
 }
 
-func ListPodsWithLabel(labels string) *v1.PodList {
-	client := GetClientSet().CoreV1().Pods("")
-	podList, err := client.List(context.TODO(), metav1.ListOptions{LabelSelector: labels})
-	if err != nil {
-		panic(err)
-	}
-	return podList
+func formatEntityName(pod v1.Pod) string {
+    return fmt.Sprintf("%s/%s", pod.GetNamespace(), pod.GetName())
 }
 
-func getEntities() []string {
-	var pods []string
-	for _, pod := range ListPodsWithLabel("").Items {
-		pods = append(pods, pod.Namespace+"/"+pod.Name)
-	}
-	return pods
-}
+func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
+	clientset := NewClientSet()
+	// current pod name is hostname
+	hostname, err := os.Hostname()
+    if err != nil {
+        panic(err)
+    }
+	log.Printf("Starting socket loop for %f", hostname)
 
-func deleteEntity(entity string) {
-	log.Printf("Pod to kill: %v", entity)
-	podparts := strings.Split(entity, "/")
-	go GetClientSet().CoreV1().Pods(podparts[0]).Delete(context.TODO(), podparts[1], metav1.DeleteOptions{})
-}
-
-func socketLoop(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -107,9 +97,18 @@ func socketLoop(listener net.Listener) {
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			entities := getEntities()
+			podsList := <- podsListChan
 			if strbytes == "list" {
-				for _, entity := range entities {
+				log.Printf("Sending entity list")
+				for _, pod := range podsList.Items {
+					// filter out certain pods
+					if strings.HasPrefix(pod.Name, "kubedoom") {
+						if pod.Name == hostname {
+							log.Printf("Filtering out %v", pod.Name)
+							continue
+						}
+					}
+					entity := formatEntityName(pod)
 					padding := strings.Repeat("\n", 255-len(entity))
 					_, err = conn.Write([]byte(entity + padding))
 					if err != nil {
@@ -118,20 +117,25 @@ func socketLoop(listener net.Listener) {
 				}
 				conn.Close()
 				stop = true
+				log.Printf("Done sending entity list")
 			} else if strings.HasPrefix(strbytes, "kill ") {
 				parts := strings.Split(strbytes, " ")
+				log.Printf("Killing entity %v", parts[1])
 				killhash, err := strconv.ParseInt(parts[1], 10, 32)
 				if err != nil {
 					log.Fatal("Could not parse kill hash")
 				}
-				for _, entity := range entities {
+				for _, pod := range podsList.Items {
+					entity := formatEntityName(pod)
 					if hash(entity) == int32(killhash) {
-						deleteEntity(entity)
+						log.Printf("Pod to kill: %v", entity)
+						clientset.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
 						break
 					}
 				}
 				conn.Close()
 				stop = true
+				log.Printf("Done killing entity ")
 			}
 		}
 	}
@@ -150,6 +154,23 @@ func main() {
 	log.Print("You can now connect to it with a VNC viewer at port 5900")
 
 	log.Print("Trying to start DOOM ...")
-	startCmd("/usr/bin/env DISPLAY=:99 /usr/local/games/psdoom -warp -E1M1 -skill 1 -nomouse")
-	socketLoop(listener)
+	startCmd("/usr/bin/env DISPLAY=:99 /usr/local/games/psdoom -warp -E1M1 -skill 1 -nomouse -nosound")
+
+	podsListChan := make(chan *v1.PodList)
+	// query the running pods every 5 sec
+	go func() {
+		clientset := NewClientSet()
+
+		for {
+			options := metav1.ListOptions{FieldSelector: "status.phase=Running"}
+			podsList, err := clientset.CoreV1().Pods("").List(context.Background(), options)
+			podsListChan <- podsList
+			if err != nil {
+				log.Fatal(err)
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	socketLoop(listener, podsListChan)
 }
