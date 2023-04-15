@@ -19,6 +19,7 @@ spec:
       containers:
         - image: ghcr.io/storax/kubedoom@sha256:851ba8c80b93cd518e06111a17bca12c40ade062d727cad21e4a690779dd5445
           name: kubedoom
+          imagePullPolicy: Always
           ports:
             - containerPort: 5900
               name: vnc
