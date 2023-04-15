@@ -108,6 +108,11 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 							continue
 						}
 					}
+					labels := pod.GetLabels()
+					if labels["istio"] == "ingressgateway" {
+						log.Printf("Filtering out %v", pod.Name)
+						continue
+					}
 					entity := formatEntityName(pod)
 					padding := strings.Repeat("\n", 255-len(entity))
 					_, err = conn.Write([]byte(entity + padding))
