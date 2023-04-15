@@ -71,16 +71,16 @@ func NewClientSet() *kubernetes.Clientset {
 }
 
 func formatEntityName(pod v1.Pod) string {
-    return fmt.Sprintf("%s/%s", pod.GetNamespace(), pod.GetName())
+	return fmt.Sprintf("%s/%s", pod.GetNamespace(), pod.GetName())
 }
 
 func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 	clientset := NewClientSet()
 	// current pod name is hostname
 	hostname, err := os.Hostname()
-    if err != nil {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("Starting socket loop for %f", hostname)
 
 	for {
@@ -97,7 +97,7 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			podsList := <- podsListChan
+			podsList := <-podsListChan
 			if strbytes == "list" {
 				log.Printf("Sending entity list")
 				for _, pod := range podsList.Items {
