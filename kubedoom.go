@@ -71,16 +71,16 @@ func NewClientSet() *kubernetes.Clientset {
 }
 
 func formatEntityName(pod v1.Pod) string {
-    return fmt.Sprintf("%s/%s", pod.GetNamespace(), pod.GetName())
+	return fmt.Sprintf("%s/%s", pod.GetNamespace(), pod.GetName())
 }
 
 func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 	clientset := NewClientSet()
 	// current pod name is hostname
 	hostname, err := os.Hostname()
-    if err != nil {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("Starting socket loop for %f", hostname)
 
 	for {
@@ -97,16 +97,20 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			podsList := <- podsListChan
+			podsList := <-podsListChan
 			if strbytes == "list" {
 				log.Printf("Sending entity list")
 				for _, pod := range podsList.Items {
-					// filter out certain pods
-					if strings.HasPrefix(pod.Name, "kubedoom") {
-						if pod.Name == hostname {
-							log.Printf("Filtering out %v", pod.Name)
-							continue
-						}
+					// filter out the pod that is running this code
+					if pod.Name == hostname {
+						log.Printf("Filtering out %v", pod.Name)
+						continue
+					}
+					// filter out istio ingress so we don't disrupt session
+					labels := pod.GetLabels()
+					if labels["istio"] == "ingressgateway" {
+						log.Printf("Filtering out %v", pod.Name)
+						continue
 					}
 					entity := formatEntityName(pod)
 					padding := strings.Repeat("\n", 255-len(entity))
