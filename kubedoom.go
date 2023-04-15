@@ -101,13 +101,12 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 			if strbytes == "list" {
 				log.Printf("Sending entity list")
 				for _, pod := range podsList.Items {
-					// filter out certain pods
-					if strings.HasPrefix(pod.Name, "kubedoom") {
-						if pod.Name == hostname {
-							log.Printf("Filtering out %v", pod.Name)
-							continue
-						}
+					// filter out the pod that is running this code
+					if pod.Name == hostname {
+						log.Printf("Filtering out %v", pod.Name)
+						continue
 					}
+					// filter out istio ingress so we don't disrupt session
 					labels := pod.GetLabels()
 					if labels["istio"] == "ingressgateway" {
 						log.Printf("Filtering out %v", pod.Name)
