@@ -1,0 +1,11 @@
+---
+resources:
+  - ../base
+
+patchesStrategicMerge:
+  - deployment.yaml
+
+images:
+  - name: ghcr.io/structsure/kubedoom
+    newName: localhost:5000/kubedoom
+    newTag: latest
