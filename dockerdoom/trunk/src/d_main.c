@@ -1095,6 +1095,10 @@ void D_DoomMain (void)
     DEH_printf("W_Init: Init WADfiles.\n");
     D_AddFile(iwadfile);
 
+    // by this point in startup the gamemode hasn't been set, even though the doom.wad
+    // is loaded, so the code below doesn't scan for the psdoom1.wad custom level
+    D_IdentifyVersion();
+
 // *** PID BEGIN ***
 // If the command-line flag to suppress auto-loading of custom
 // ps management levels is *not* there, load the appropriate level.

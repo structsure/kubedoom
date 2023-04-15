@@ -27,7 +27,7 @@ ADD /dockerdoom /dockerdoom
 WORKDIR /dockerdoom/trunk
 RUN ./configure && make && make install
 
-FROM ubuntu:kinetic as build-converge
+FROM ghcr.io/structsure/kubedoom:wad AS build-converge
 WORKDIR /build
 RUN mkdir -p \
   /build/root \
