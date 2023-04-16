@@ -121,6 +121,8 @@ func socketLoop(listener net.Listener) {
 				stop = true
 				log.Printf("Done sending entity list")
 			} else if strings.HasPrefix(strbytes, "kill ") {
+				conn.Close()
+				stop = true
 				parts := strings.Split(strbytes, " ")
 				log.Printf("Killing entity %v", parts[1])
 				killhash, err := strconv.ParseInt(parts[1], 10, 32)
@@ -135,8 +137,6 @@ func socketLoop(listener net.Listener) {
 						break
 					}
 				}
-				conn.Close()
-				stop = true
 				log.Printf("Done killing entity ")
 			}
 		}
