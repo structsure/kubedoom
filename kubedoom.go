@@ -29,27 +29,6 @@ func hash(input string) int32 {
 	return hash
 }
 
-func runCmd(cmdstring string) {
-	parts := strings.Split(cmdstring, " ")
-	cmd := exec.Command(parts[0], parts[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("The following command failed: \"%v\"\n", cmdstring)
-	}
-}
-
-func outputCmd(argv []string) string {
-	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Stderr = os.Stderr
-	output, err := cmd.Output()
-	if err != nil {
-		log.Fatalf("The following command failed: \"%v\"\n", argv)
-	}
-	return string(output)
-}
-
 func startCmd(cmdstring string) {
 	parts := strings.Split(cmdstring, " ")
 	cmd := exec.Command(parts[0], parts[1:]...)
@@ -74,7 +53,25 @@ func formatEntityName(pod v1.Pod) string {
 	return fmt.Sprintf("%s/%s", pod.GetNamespace(), pod.GetName())
 }
 
-func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
+func dontPanicPtr[a any](ret *a, err error) *a {
+	if err != nil {
+		panic(err.Error())
+	}
+	return ret
+}
+func GetClientSet() *kubernetes.Clientset {
+	return kubernetes.NewForConfigOrDie(dontPanicPtr(rest.InClusterConfig()))
+}
+func ListPodsWithLabel() *v1.PodList {
+	return dontPanicPtr(GetClientSet().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{}))
+}
+func getEntities(e chan v1.Pod) {
+	for _, pod := range ListPodsWithLabel().Items {
+		e <- pod
+	}
+	close(e)
+}
+func socketLoop(listener net.Listener) {
 	clientset := NewClientSet()
 	// current pod name is hostname
 	hostname, err := os.Hostname()
@@ -97,18 +94,21 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 			}
 			bytes = bytes[0:n]
 			strbytes := strings.TrimSpace(string(bytes))
-			podsList := <-podsListChan
+			entityChannel := make(chan v1.Pod)
+			go getEntities(entityChannel)
 			if strbytes == "list" {
 				log.Printf("Sending entity list")
-				for _, pod := range podsList.Items {
+				for pod := range entityChannel {
 					// filter out the pod that is running this code
 					if pod.Name == hostname {
 						log.Printf("Filtering out %v", pod.Name)
 						continue
 					}
-					// filter out istio ingress so we don't disrupt session
 					labels := pod.GetLabels()
-					if labels["istio"] == "ingressgateway" {
+					// filter out istio ingress so we don't disrupt session
+					if labels["istio"] == "ingressgateway" ||
+					// filter out docker registry so new pods can pull the containers
+						labels["app"] == "docker-registry" {
 						log.Printf("Filtering out %v", pod.Name)
 						continue
 					}
@@ -123,13 +123,15 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 				stop = true
 				log.Printf("Done sending entity list")
 			} else if strings.HasPrefix(strbytes, "kill ") {
+				conn.Close()
+				stop = true
 				parts := strings.Split(strbytes, " ")
 				log.Printf("Killing entity %v", parts[1])
 				killhash, err := strconv.ParseInt(parts[1], 10, 32)
 				if err != nil {
 					log.Fatal("Could not parse kill hash")
 				}
-				for _, pod := range podsList.Items {
+				for pod := range entityChannel {
 					entity := formatEntityName(pod)
 					if hash(entity) == int32(killhash) {
 						log.Printf("Pod to kill: %v", entity)
@@ -137,8 +139,6 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 						break
 					}
 				}
-				conn.Close()
-				stop = true
 				log.Printf("Done killing entity ")
 			}
 		}
@@ -176,5 +176,5 @@ func main() {
 		}
 	}()
 
-	socketLoop(listener, podsListChan)
+	socketLoop(listener)
 }
