@@ -106,9 +106,11 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 						log.Printf("Filtering out %v", pod.Name)
 						continue
 					}
-					// filter out istio ingress so we don't disrupt session
 					labels := pod.GetLabels()
-					if labels["istio"] == "ingressgateway" {
+					// filter out istio ingress so we don't disrupt session
+					if labels["istio"] == "ingressgateway" ||
+					// filter out docker registry so new pods can pull the containers
+						labels["app"] == "docker-registry" {
 						log.Printf("Filtering out %v", pod.Name)
 						continue
 					}
