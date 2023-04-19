@@ -133,7 +133,7 @@ func socketLoop(listener net.Listener, podsListChan <-chan *v1.PodList) {
 					entity := formatEntityName(pod)
 					if hash(entity) == int32(killhash) {
 						log.Printf("Pod to kill: %v", entity)
-						clientset.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
+						go clientset.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
 						break
 					}
 				}
