@@ -1,0 +1,83 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubedoom-blue
+  namespace: kubedoom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubedoom
+  template:
+    metadata:
+      labels:
+        app: kubedoom
+        color: blue
+    spec:
+      serviceAccountName: kubedoom
+      containers:
+        - image: ghcr.io/storax/kubedoom@sha256:851ba8c80b93cd518e06111a17bca12c40ade062d727cad21e4a690779dd5445
+          name: kubedoom
+          ports:
+            - containerPort: 5900
+              name: vnc
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "1"
+        - image: geek1011/easy-novnc@sha256:c79d386dd660533106a65473650fcf5ddc61319d02183f76c0009349d5dd5ee8
+          args:
+            - --basic-ui
+            - --verbose
+            - --no-url-password
+          name: easy-novnc
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "1"
+      nodeSelector:
+        kubernetes.io/hostname: braindeck-blue
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kubedoom
+  name: kubedoom-blue
+  namespace: kubedoom
+spec:
+  selector:
+    app: kubedoom
+    color: blue
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: kubedoom-blue
+  namespace: kubedoom
+spec:
+  gateways:
+    - istio-system/public
+  hosts:
+    - blue.bigbang.dev
+  http:
+    - route:
+        - destination:
+            host: kubedoom-blue.kubedoom.svc.cluster.local
+            port:
+              number: 80

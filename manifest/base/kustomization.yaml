@@ -1,0 +1,11 @@
+---
+resources:
+  - namespace.yaml
+  - blue.yaml
+  - orange.yaml
+  - rbac.yaml
+
+images:
+ - name: ghcr.io/storax/kubedoom
+   newName: ghcr.io/structsure/kubedoom
+   newTag: master

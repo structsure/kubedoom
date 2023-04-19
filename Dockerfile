@@ -1,6 +1,6 @@
 FROM golang:1.20-alpine AS build-kubedoom
 WORKDIR /go/src/kubedoom
-ADD go.mod .
+ADD go.mod go.sum ./
 ADD kubedoom.go .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubedoom .
 
@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y \
   wget ca-certificates
 RUN wget http://distro.ibiblio.org/pub/linux/distributions/slitaz/sources/packages/d/doom1.wad
 RUN echo "TARGETARCH is $TARGETARCH"
-RUN echo "KUBECTL_VERSION is $KUBECTL_VERSION"
-RUN wget -O /usr/bin/kubectl "https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl" \
-  && chmod +x /usr/bin/kubectl
 
 FROM ubuntu:kinetic AS build-doom
 ENV DEBIAN_FRONTEND=noninteractive
@@ -30,14 +27,13 @@ ADD /dockerdoom /dockerdoom
 WORKDIR /dockerdoom/trunk
 RUN ./configure && make && make install
 
-FROM ubuntu:kinetic as build-converge
+FROM ghcr.io/structsure/kubedoom:wad AS build-converge
 WORKDIR /build
 RUN mkdir -p \
   /build/root \
   /build/usr/bin \
   /build/usr/local/games
 COPY --from=build-essentials /doom1.wad /build/root
-COPY --from=build-essentials /usr/bin/kubectl /build/usr/bin
 COPY --from=build-kubedoom /go/src/kubedoom/kubedoom /build/usr/bin
 COPY --from=build-doom /usr/local/games/psdoom /build/usr/local/games
 
