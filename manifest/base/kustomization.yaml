@@ -8,4 +8,4 @@ resources:
 images:
  - name: ghcr.io/storax/kubedoom
    newName: ghcr.io/structsure/kubedoom
-   newTag: 5-grafana-dashboard
+   newTag: 25-merge
