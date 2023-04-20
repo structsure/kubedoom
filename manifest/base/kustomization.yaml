@@ -8,4 +8,4 @@ resources:
 images:
  - name: ghcr.io/storax/kubedoom
    newName: ghcr.io/structsure/kubedoom
-   newTag: master
+   newTag: 25-merge
