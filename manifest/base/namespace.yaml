@@ -5,3 +5,4 @@ metadata:
   name: kubedoom
   labels:
     istio-injection: enabled
+    zarf.dev/agent: ignore
