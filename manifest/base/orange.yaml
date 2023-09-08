@@ -75,7 +75,7 @@ spec:
   gateways:
     - istio-system/public
   hosts:
-    - orange.bigbang.dev
+    - orange.edge.structsure.io
   http:
     - route:
         - destination:
