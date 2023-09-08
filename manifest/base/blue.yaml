@@ -75,7 +75,7 @@ spec:
   gateways:
     - istio-system/public
   hosts:
-    - blue.bigbang.dev
+    - blue.edge.structsure.io
   http:
     - route:
         - destination:
